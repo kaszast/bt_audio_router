@@ -15,7 +15,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="BT Audio Router"
+            android:text="@string/app_name"
             android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="#1A237E"
@@ -24,7 +24,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Android Auto &amp; Dedikált Kihangosító Szétválasztó"
+            android:text="@string/app_subtitle"
             android:textSize="13sp"
             android:textColor="#5C6BC0"
             android:layout_marginBottom="16dp" />
@@ -43,7 +43,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Szükséges engedélyek hiányoznak!"
+                android:text="@string/perm_title"
                 android:textColor="#C62828"
                 android:textStyle="bold"
                 android:textSize="14sp" />
@@ -51,7 +51,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Bluetooth, Telefonállapot és Értesítési engedély szükséges a háttérbeli hívásátirányításhoz."
+                android:text="@string/perm_desc"
                 android:textColor="#B71C1C"
                 android:textSize="12sp"
                 android:layout_marginTop="4dp" />
@@ -79,7 +79,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="1. Eszközök beállítása"
+                android:text="@string/section1_title"
                 android:textStyle="bold"
                 android:textSize="16sp"
                 android:textColor="#212121"
@@ -139,7 +139,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="2. Szolgáltatás állapota"
+                android:text="@string/section2_title"
                 android:textStyle="bold"
                 android:textSize="16sp"
                 android:textColor="#212121"
@@ -164,7 +164,7 @@
                 android:id="@+id/tvCallState"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Hívás állapota: IDLE (Nincs hívás)"
+                android:text="@string/call_idle"
                 android:textSize="13sp"
                 android:textColor="#616161"
                 android:layout_marginBottom="4dp" />
@@ -173,7 +173,7 @@
                 android:id="@+id/tvActiveDevice"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Aktív audio eszköz: Nincs / Rendszer alapértelmezett"
+                android:text="@string/dev_default"
                 android:textSize="13sp"
                 android:textColor="#616161" />
         </LinearLayout>
@@ -191,7 +191,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="3. Diagnosztika és Manuális Teszt"
+                android:text="@string/section3_title"
                 android:textStyle="bold"
                 android:textSize="16sp"
                 android:textColor="#212121"
@@ -219,7 +219,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Valós idejű eseménynapló:"
+            android:text="@string/log_label"
             android:textSize="13sp"
             android:textStyle="bold"
             android:textColor="#424242"
@@ -235,7 +235,7 @@
             android:fontFamily="monospace"
             android:textSize="11sp"
             android:scrollbars="vertical"
-            android:text="[Rendszer kész] Várakozás indításra..." />
+            android:text="@string/log_initial" />
 
     </LinearLayout>
 </ScrollView>

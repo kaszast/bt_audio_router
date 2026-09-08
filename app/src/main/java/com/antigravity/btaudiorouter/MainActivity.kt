@@ -112,7 +112,7 @@ class MainActivity : Activity() {
 
         btnRefreshDevices.setOnClickListener {
             loadPairedDevices()
-            appendLog("Párosított eszközök frissítve.")
+            appendLog("Párosított eszközök frissítve / Devices refreshed.")
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->
@@ -130,7 +130,7 @@ class MainActivity : Activity() {
         }
 
         btnTestRoute.setOnClickListener {
-            appendLog("Manuális teszt indítása...")
+            appendLog("Manuális teszt indítása / Manual test started...")
             val intent = Intent(this, AudioRoutingService::class.java).apply {
                 action = AudioRoutingService.ACTION_TEST_ROUTE
             }
@@ -142,7 +142,7 @@ class MainActivity : Activity() {
         }
 
         btnResetRoute.setOnClickListener {
-            appendLog("Audio útvonal visszaállítása alaphelyzetbe...")
+            appendLog("Audio útvonal visszaállítása / Audio route reset...")
             val intent = Intent(this, AudioRoutingService::class.java).apply {
                 action = AudioRoutingService.ACTION_RESET_ROUTE
             }
@@ -208,7 +208,7 @@ class MainActivity : Activity() {
         val bonded: Set<BluetoothDevice>? = adapter?.bondedDevices
         if (bonded != null) {
             for (dev in bonded) {
-                val name = dev.name ?: "Ismeretlen eszköz"
+                val name = dev.name ?: getString(R.string.unknown_device)
                 val mac = dev.address
                 pairedDevices.add(BtDeviceItem(name, mac))
             }
@@ -233,7 +233,7 @@ class MainActivity : Activity() {
                     val item = pairedDevices[pos]
                     prefs.sourceAaMac = item.mac
                     prefs.sourceAaName = item.name
-                    appendLog("Android Auto (forrás) beállítva: ${item.name} [${item.mac}]")
+                    appendLog("Android Auto: ${item.name} [${item.mac}]")
                     refreshServiceNotification()
                 }
             }
@@ -246,7 +246,7 @@ class MainActivity : Activity() {
                     val item = pairedDevices[pos]
                     prefs.targetSpeakerMac = item.mac
                     prefs.targetSpeakerName = item.name
-                    appendLog("Cél BT kihangosító beállítva: ${item.name} [${item.mac}]")
+                    appendLog("Target Handsfree: ${item.name} [${item.mac}]")
                     refreshServiceNotification()
                 }
             }
@@ -279,13 +279,13 @@ class MainActivity : Activity() {
             startService(serviceIntent)
         }
         switchService.isChecked = true
-        appendLog("Szolgáltatás elindítva.")
+        appendLog("Service started.")
     }
 
     private fun stopAudioService() {
         stopService(Intent(this, AudioRoutingService::class.java))
         switchService.isChecked = false
-        appendLog("Szolgáltatás leállítva.")
+        appendLog("Service stopped.")
     }
 
     private fun updateStatus() {
@@ -294,28 +294,28 @@ class MainActivity : Activity() {
         val commDev: AudioDeviceInfo? = audioManager.communicationDevice
         val devText = if (commDev != null) {
             val typeStr = when (commDev.type) {
-                AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "Bluetooth SCO"
-                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "Hangszóró"
-                AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "Telefon fülhangszóró"
-                AudioDeviceInfo.TYPE_WIRED_HEADSET -> "Vezetékes headset"
-                else -> "Egyéb (${commDev.type})"
+                AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> getString(R.string.dev_type_bt_sco)
+                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> getString(R.string.dev_type_speaker)
+                AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> getString(R.string.dev_type_earpiece)
+                AudioDeviceInfo.TYPE_WIRED_HEADSET -> getString(R.string.dev_type_headset)
+                else -> getString(R.string.dev_type_other, commDev.type)
             }
-            "${commDev.productName ?: "Névtelen"} [$typeStr - ${commDev.address ?: "-"}]"
+            "${commDev.productName ?: getString(R.string.dev_unnamed)} [$typeStr - ${commDev.address ?: "-"}]"
         } else {
-            "Rendszer alapértelmezett (Nem aktív SCO)"
+            getString(R.string.dev_default)
         }
-        tvActiveDevice.text = "Aktív audio eszköz: $devText"
+        tvActiveDevice.text = getString(R.string.active_device_format, devText)
 
-        val callState = if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+        val callStateStr = if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
             when (telephonyManager.callState) {
-                TelephonyManager.CALL_STATE_RINGING -> "RINGING (Bejövő hívás)"
-                TelephonyManager.CALL_STATE_OFFHOOK -> "OFFHOOK (Hívás aktív)"
-                else -> "IDLE (Nincs hívás)"
+                TelephonyManager.CALL_STATE_RINGING -> getString(R.string.call_ringing)
+                TelephonyManager.CALL_STATE_OFFHOOK -> getString(R.string.call_offhook)
+                else -> getString(R.string.call_idle)
             }
         } else {
-            "Ismeretlen (Nincs engedély)"
+            getString(R.string.call_unknown_perm)
         }
-        tvCallState.text = "Hívás állapota: $callState"
+        tvCallState.text = getString(R.string.call_state_format, callStateStr)
     }
 
     private fun appendLog(message: String) {

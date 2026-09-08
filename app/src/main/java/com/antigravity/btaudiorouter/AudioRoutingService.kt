@@ -22,11 +22,6 @@ import android.util.Log
  * [AudioRoutingService]
  *
  * Háttérben futó előtér-szolgáltatás (Foreground Service).
- *
- * Folyamatosan fenntart egy állandó értesítést (Notification), amely kijelzi:
- * 1. A szolgáltatás aktuális állapotát (Figyelés / Hívás folyamatban).
- * 2. A kiválasztott Android Auto (forrás) eszközt.
- * 3. A kiválasztott Bluetooth kihangosító (cél) eszközt.
  */
 class AudioRoutingService : Service() {
 
@@ -48,14 +43,14 @@ class AudioRoutingService : Service() {
     }
 
     private val deviceChangedListener = AudioManager.OnCommunicationDeviceChangedListener { device ->
-        log("Communication device megváltozott: ${device?.productName ?: "Nincs"} (${device?.address ?: "-"})")
+        log("Communication device changed: ${device?.productName ?: "None"} (${device?.address ?: "-"})")
         notifyStatusUpdate()
         updatePersistentNotification()
 
         if (isCallActive) {
             val targetMac = prefs.targetSpeakerMac
             if (targetMac != null && (device == null || !device.address.equals(targetMac, ignoreCase = true))) {
-                log("Visszaugrás észlelve az Android Auto vagy a rendszer felől! Azonnali visszakényszerítés...")
+                log("Revert detected! Re-enforcing audio route...")
                 enforceTargetAudioRoute()
             }
         }
@@ -65,15 +60,15 @@ class AudioRoutingService : Service() {
         override fun onCallStateChanged(state: Int) {
             when (state) {
                 TelephonyManager.CALL_STATE_RINGING -> {
-                    log("Hívásállapot: RINGING (Bejövő hívás csörög)")
+                    log("Call State: RINGING")
                     handleCallStarted()
                 }
                 TelephonyManager.CALL_STATE_OFFHOOK -> {
-                    log("Hívásállapot: OFFHOOK (Aktív beszélgetés vagy tárcsázás)")
+                    log("Call State: OFFHOOK")
                     handleCallStarted()
                 }
                 TelephonyManager.CALL_STATE_IDLE -> {
-                    log("Hívásállapot: IDLE (Hívás befejeződött)")
+                    log("Call State: IDLE")
                     handleCallEnded()
                 }
             }
@@ -84,7 +79,7 @@ class AudioRoutingService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        log("Szolgáltatás inicializálása...")
+        log("Initializing service...")
 
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
@@ -101,20 +96,20 @@ class AudioRoutingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP_SERVICE) {
-            log("Leállítási parancs érkezett az értesítésből.")
+            log("Stop command received from notification.")
             stopSelf()
             return START_NOT_STICKY
         }
 
         if (intent?.action == ACTION_TEST_ROUTE) {
-            log("Manuális teszt parancs: azonnali átirányítás a cél kihangosítóra...")
+            log("Manual test command: routing to target handsfree...")
             enforceTargetAudioRoute()
             updatePersistentNotification()
             return START_STICKY
         }
 
         if (intent?.action == ACTION_RESET_ROUTE) {
-            log("Manuális visszaállítás: Clear communication device...")
+            log("Reset command: Clear communication device...")
             audioManager.clearCommunicationDevice()
             notifyStatusUpdate()
             updatePersistentNotification()
@@ -126,7 +121,6 @@ class AudioRoutingService : Service() {
             return START_STICKY
         }
 
-        // Előtér-szolgáltatás elindítása a részletes állandó értesítéssel
         val notification = createCurrentNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
@@ -135,14 +129,14 @@ class AudioRoutingService : Service() {
             startForeground(NOTIFICATION_ID, notification)
         }
 
-        log("Szolgáltatás előtérben fut (Anti-Revert Watchdog készenlétben).")
+        log("Service running in foreground.")
         return START_STICKY
     }
 
     private fun handleCallStarted() {
         if (!isCallActive) {
             isCallActive = true
-            log("Hívás indult! Cél kihangosító kényszerítése és Watchdog indítása...")
+            log("Call started! Enforcing target handsfree and starting Watchdog...")
             enforceTargetAudioRoute()
             startWatchdog()
             updatePersistentNotification()
@@ -153,7 +147,7 @@ class AudioRoutingService : Service() {
         if (isCallActive) {
             isCallActive = false
             stopWatchdog()
-            log("Hívás véget ért. Kommunikációs eszköz törlése (visszaadás a médiának / Yuehoo-nak)...")
+            log("Call ended. Clearing communication device...")
             audioManager.clearCommunicationDevice()
             updatePersistentNotification()
         }
@@ -162,7 +156,7 @@ class AudioRoutingService : Service() {
     fun enforceTargetAudioRoute(): Boolean {
         val targetMac = prefs.targetSpeakerMac
         if (targetMac.isNullOrEmpty()) {
-            log("HIBA: Nincs cél kihangosító MAC cím beállítva!")
+            log("ERROR: No target speaker MAC set!")
             return false
         }
 
@@ -175,7 +169,7 @@ class AudioRoutingService : Service() {
         }
 
         if (targetDevice == null) {
-            log("FIGYELEM: A cél BT kihangosító ($targetMac) nem található az aktív SCO eszközök között! Csatlakoztatva van?")
+            log("WARNING: Target BT speaker ($targetMac) not found in active SCO devices!")
             return false
         }
 
@@ -185,7 +179,7 @@ class AudioRoutingService : Service() {
         }
 
         val success = audioManager.setCommunicationDevice(targetDevice)
-        log("setCommunicationDevice -> ${targetDevice.productName} [${targetDevice.address}], siker: $success")
+        log("setCommunicationDevice -> ${targetDevice.productName} [${targetDevice.address}], success: $success")
         notifyStatusUpdate()
         return success
     }
@@ -217,51 +211,46 @@ class AudioRoutingService : Service() {
         }
     }
 
-    /**
-     * Összeállítja és frissíti az állandó értesítést a szervíz állapotával és a két eszközzel.
-     */
     fun updatePersistentNotification() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, createCurrentNotification())
     }
 
-    /**
-     * Létrehozza a legfrissebb állapotot tartalmazó Notification objektumot.
-     */
     private fun createCurrentNotification(): Notification {
+        val notSelectedStr = getString(R.string.not_selected)
+        val unknownDevStr = getString(R.string.unknown_device)
+
         val aaDevice = when {
             !prefs.sourceAaName.isNullOrEmpty() -> "${prefs.sourceAaName} (${prefs.sourceAaMac ?: "-"})"
             !prefs.sourceAaMac.isNullOrEmpty() -> prefs.sourceAaMac!!
-            else -> "Nincs kiválasztva"
+            else -> notSelectedStr
         }
 
         val targetDevice = when {
             !prefs.targetSpeakerName.isNullOrEmpty() -> "${prefs.targetSpeakerName} (${prefs.targetSpeakerMac ?: "-"})"
             !prefs.targetSpeakerMac.isNullOrEmpty() -> prefs.targetSpeakerMac!!
-            else -> "Nincs kiválasztva"
+            else -> notSelectedStr
         }
 
         val title = if (isCallActive) {
-            "BT Audio Router • Hívás folyamatban"
+            getString(R.string.notif_title_call)
         } else {
-            "BT Audio Router • Figyelés aktív"
+            getString(R.string.notif_title_active)
         }
 
         val shortText = if (isCallActive) {
-            "Audio -> ${prefs.targetSpeakerName ?: "Kihangosító"}"
+            getString(R.string.notif_short_call, prefs.targetSpeakerName ?: prefs.targetSpeakerMac ?: unknownDevStr)
         } else {
-            "Cél: ${prefs.targetSpeakerName ?: "Nincs"} | Forrás: ${prefs.sourceAaName ?: "Nincs"}"
+            getString(R.string.notif_short_idle, prefs.targetSpeakerName ?: notSelectedStr, prefs.sourceAaName ?: notSelectedStr)
         }
 
         val stateDescription = if (isCallActive) {
-            "HÍVÁS FOLYAMATBAN (Audio kényszerítve)"
+            getString(R.string.notif_desc_call)
         } else {
-            "Figyelés (Várakozás hívásra)"
+            getString(R.string.notif_desc_idle)
         }
 
-        val bigText = "Állapot: $stateDescription\n" +
-                "• Android Auto (Forrás): $aaDevice\n" +
-                "• Kihangosító (Cél): $targetDevice"
+        val bigText = getString(R.string.notif_big_text, stateDescription, aaDevice, targetDevice)
 
         val stopIntent = Intent(this, AudioRoutingService::class.java).apply {
             action = ACTION_STOP_SERVICE
@@ -288,7 +277,7 @@ class AudioRoutingService : Service() {
             .setStyle(Notification.BigTextStyle().bigText(bigText))
             .setSmallIcon(R.drawable.ic_launcher)
             .setContentIntent(mainPendingIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Leállítás", stopPendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, getString(R.string.notif_stop_btn), stopPendingIntent)
             .setOngoing(true)
             .build()
     }
@@ -300,7 +289,7 @@ class AudioRoutingService : Service() {
         audioManager.removeOnCommunicationDeviceChangedListener(deviceChangedListener)
         telephonyManager.unregisterTelephonyCallback(telephonyCallback)
         audioManager.clearCommunicationDevice()
-        log("Szolgáltatás leállítva.")
+        log("Service stopped.")
         notifyStatusUpdate()
     }
 

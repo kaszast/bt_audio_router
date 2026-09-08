@@ -21,6 +21,7 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 ## ✨ Főbb Funkciók
 
 - **Automatikus Hívás-Átirányítás**: Bejövő és kimenő hívások automatikus kezelése.
+- **Többnyelvű Támogatás (Multilingual)**: Automatikus magyar nyelv, ha a telefon nyelve magyar, egyébként alapértelmezett angol nyelv.
 - **Eszközválasztás**: A telefonhoz párosított Bluetooth eszközök közül külön kiválasztható az Android Auto forrás és a cél kihangosító.
 - **Anti-Revert Watchdog**: Felülbírálja az Android Auto automatikus audio-visszaállítási kísérleteit.
 - **Állandó Állapotértesítés**: Kijelzi a szervíz állapotát, valamint a kiválasztott forrás (Android Auto) és cél (Kihangosító) eszközöket.
@@ -40,6 +41,8 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 | **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli az engedélykéréseket, a Bluetooth eszközök kiválasztását, a szolgáltatás ki/bekapcsolását és a napló megjelenítését. |
 | **`BootReceiver.kt`** | `BroadcastReceiver`, amely a telefon bekapcsolása után automatikusan elindítja a szolgáltatást. |
 | **`DevicePreferenceManager.kt`** | `SharedPreferences` wrapper a kiválasztott nevek, MAC címek és állapotok tartós tárolásához. |
+| **`res/values/strings.xml`** | Alapértelmezett Angol nyelvű szövegerőforrások. |
+| **`res/values-hu/strings.xml`** | Magyar nyelvű fordítások (magyar rendszernyelv esetén). |
 
 ---
 
@@ -70,8 +73,8 @@ Android 12 (API 31) óta a hivatalos és ajánlott API az `AudioManager.setCommu
 ### 2. Előtér-szolgáltatás (Foreground Service) Android 14+ alatt
 Android 14 (API 34) óta kötelező specifikus FGS típust megadni. Mivel a külső Bluetooth kiegészítők vezérlése nem igényli a rendszertárcsázó (`DIALER`) szerepkört, a szolgáltatás a `connectedDevice` típust használja a `FOREGROUND_SERVICE_CONNECTED_DEVICE` engedéllyel.
 
-### 3. TelephonyCallback
-Android 12 felett a `TelephonyCallback` és annak `CallStateListener` interfésze használandó a hívásállapotok (`RINGING`, `OFFHOOK`, `IDLE`) figyelésére.
+### 3. Többnyelvűség (Localization)
+Az Android automatikusan a `res/values-hu/strings.xml` fájlból tölti be a szövegeket, ha a telefon nyelve magyar, és a `res/values/strings.xml` fájlból minden más nyelv esetén.
 
 ---
 
@@ -112,6 +115,7 @@ When connected to Android Auto, the Android system automatically routes call aud
 ## ✨ Features
 
 - **Automatic Call Routing**: Hands-free routing for incoming and outgoing calls.
+- **Multilingual Localization**: Automatically displays Hungarian if the phone system language is Hungarian; defaults to English for all other system languages.
 - **Device Selector**: Independent selection of Android Auto source and target Bluetooth speaker from paired devices.
 - **Anti-Revert Watchdog**: Overrides Android Auto audio hijacking attempts.
 - **Live Status Notification**: Persistent notification displaying service state and both device names.

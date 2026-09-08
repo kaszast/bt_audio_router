@@ -1,0 +1,53 @@
+<resources>
+    <!-- Hungarian Strings -->
+    <string name="app_name">BT Audio Router</string>
+    <string name="app_subtitle">Android Auto &amp; Dedikált Kihangosító Szétválasztó</string>
+
+    <string name="perm_title">Szükséges engedélyek hiányoznak!</string>
+    <string name="perm_desc">Bluetooth, Telefonállapot és Értesítési engedély szükséges a háttérbeli hívásátirányításhoz.</string>
+    <string name="grant_permissions_label">Engedélyek megadása</string>
+
+    <string name="section1_title">1. Eszközök beállítása</string>
+    <string name="android_auto_device_label">Android Auto eszköz (Forrás):</string>
+    <string name="target_speaker_label">Bluetooth kihangosító (Cél):</string>
+    <string name="refresh_devices_label">Eszközök újratöltése</string>
+
+    <string name="section2_title">2. Szolgáltatás állapota</string>
+    <string name="service_switch_label">Hívás-átirányító háttérszolgáltatás</string>
+    <string name="call_state_format">Hívás állapota: %1$s</string>
+    <string name="active_device_format">Aktív audio eszköz: %1$s</string>
+
+    <string name="call_idle">IDLE (Nincs hívás)</string>
+    <string name="call_ringing">RINGING (Bejövő hívás csörög)</string>
+    <string name="call_offhook">OFFHOOK (Hívás aktív)</string>
+    <string name="call_unknown_perm">Ismeretlen (Nincs engedély)</string>
+
+    <string name="dev_default">Rendszer alapértelmezett (Nem aktív SCO)</string>
+    <string name="dev_unnamed">Névtelen eszköz</string>
+    <string name="dev_type_bt_sco">Bluetooth SCO</string>
+    <string name="dev_type_speaker">Hangszóró</string>
+    <string name="dev_type_earpiece">Telefon fülhangszóró</string>
+    <string name="dev_type_headset">Vezetékes headset</string>
+    <string name="dev_type_other">Egyéb (%1$d)</string>
+
+    <string name="section3_title">3. Diagnosztika és Manuális Teszt</string>
+    <string name="test_button_label">Átirányítás tesztelése (Teszt SCO)</string>
+    <string name="reset_button_label">Visszaállítás (Clear Route)</string>
+
+    <string name="log_label">Valós idejű eseménynapló:</string>
+    <string name="log_initial">[Rendszer kész] Várakozás indításra...\n</string>
+
+    <string name="channel_name">BT Audio Router Értesítések</string>
+    <string name="channel_desc">Értesítések az aktív audio útválasztó szolgáltatásról</string>
+
+    <string name="notif_title_active">BT Audio Router • Figyelés aktív</string>
+    <string name="notif_title_call">BT Audio Router • Hívás folyamatban</string>
+    <string name="notif_short_call">Audio -&gt; %1$s</string>
+    <string name="notif_short_idle">Cél: %1$s | Forrás: %2$s</string>
+    <string name="notif_desc_call">HÍVÁS FOLYAMATBAN (Audio kényszerítve)</string>
+    <string name="notif_desc_idle">Figyelés (Várakozás hívásra)</string>
+    <string name="notif_big_text">Állapot: %1$s\n• Android Auto (Forrás): %2$s\n• Kihangosító (Cél): %3$s</string>
+    <string name="notif_stop_btn">Leállítás</string>
+    <string name="not_selected">Nincs kiválasztva</string>
+    <string name="unknown_device">Ismeretlen eszköz</string>
+</resources>
