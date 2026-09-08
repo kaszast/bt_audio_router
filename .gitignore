@@ -9,3 +9,6 @@ build/
 .externalNativeBuild
 .cxx
 *.apk
+github_bt_router*
+*.pub
+id_*
