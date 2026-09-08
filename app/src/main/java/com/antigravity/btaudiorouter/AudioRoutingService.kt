@@ -129,11 +129,8 @@ class AudioRoutingService : Service() {
         // Előtér-szolgáltatás elindítása a részletes állandó értesítéssel
         val notification = createCurrentNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            var serviceTypes = ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                serviceTypes = serviceTypes or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-            }
-            startForeground(NOTIFICATION_ID, notification, serviceTypes)
+            val serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            startForeground(NOTIFICATION_ID, notification, serviceType)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
