@@ -289,7 +289,7 @@ class AudioRoutingService : Service() {
             .setContentTitle(title)
             .setContentText(shortText)
             .setStyle(Notification.BigTextStyle().bigText(bigText))
-            .setSmallIcon(android.R.drawable.stat_sys_phone_call)
+            .setSmallIcon(R.drawable.ic_launcher)
             .setContentIntent(mainPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Leállítás", stopPendingIntent)
             .setOngoing(true)
