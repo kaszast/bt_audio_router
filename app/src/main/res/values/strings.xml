@@ -3,7 +3,7 @@
     <string name="android_auto_device_label">Android Auto eszköz (Forrás):</string>
     <string name="target_speaker_label">Bluetooth kihangosító (Cél):</string>
     <string name="service_switch_label">Hívás-átirányító háttérszolgáltatás</string>
-    <string name="test_button_label">Átirányítás tesztelése (Teszt SCO)</string>
+    <string name="test_button_label">Átirányítás tesztelése (SCO)</string>
     <string name="reset_button_label">Visszaállítás (Clear Route)</string>
     <string name="refresh_devices_label">Eszközök újratöltése</string>
     <string name="grant_permissions_label">Engedélyek megadása</string>

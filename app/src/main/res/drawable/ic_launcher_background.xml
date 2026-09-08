@@ -4,17 +4,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Deep Indigo Primary Background -->
+    <!-- OLED Cyber Space Background -->
     <path
-        android:fillColor="#1A237E"
+        android:fillColor="#05050A"
         android:pathData="M0,0h108v108h-108z" />
-
-    <!-- Modern Concentric Accent Circles -->
-    <path
-        android:fillColor="#283593"
-        android:pathData="M54,54m-42,0a42,42 0 1,0 84,0a42,42 0 1,0 -84,0" />
-
-    <path
-        android:fillColor="#303F9F"
-        android:pathData="M54,54m-28,0a28,28 0 1,0 56,0a28,28 0 1,0 -56,0" />
 </vector>
