@@ -9,6 +9,7 @@ build/
 .externalNativeBuild
 .cxx
 *.apk
+!BTAudioRouter-v1.0.apk
 github_bt_router*
 *.pub
 id_*
