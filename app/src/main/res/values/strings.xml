@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">BT Audio Router</string>
+    <string name="android_auto_device_label">Android Auto eszköz (Forrás):</string>
+    <string name="target_speaker_label">Bluetooth kihangosító (Cél):</string>
+    <string name="service_switch_label">Hívás-átirányító háttérszolgáltatás</string>
+    <string name="test_button_label">Átirányítás tesztelése (Teszt SCO)</string>
+    <string name="reset_button_label">Visszaállítás (Clear Route)</string>
+    <string name="refresh_devices_label">Eszközök újratöltése</string>
+    <string name="grant_permissions_label">Engedélyek megadása</string>
+    <string name="active_device_label">Aktív kommunikációs eszköz:</string>
+    <string name="channel_name">BT Audio Router Értesítések</string>
+    <string name="channel_desc">Értesítések az aktív audio útválasztó szolgáltatásról</string>
+</resources>

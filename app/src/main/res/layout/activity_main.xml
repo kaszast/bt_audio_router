@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#F0F2F5">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Title / Header -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="BT Audio Router"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#1A237E"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Android Auto &amp; Dedikált Kihangosító Szétválasztó"
+            android:textSize="13sp"
+            android:textColor="#5C6BC0"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Permissions Banner -->
+        <LinearLayout
+            android:id="@+id/layoutPermissions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFEBEE"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Szükséges engedélyek hiányoznak!"
+                android:textColor="#C62828"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bluetooth, Telefonállapot és Értesítési engedély szükséges a háttérbeli hívásátirányításhoz."
+                android:textColor="#B71C1C"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btnGrantPermissions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/grant_permissions_label"
+                android:layout_marginTop="8dp"
+                android:backgroundTint="#D32F2F"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
+
+        <!-- Configuration Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:padding="16dp"
+            android:elevation="2dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1. Eszközök beállítása"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="#212121"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Android Auto Device Selector -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/android_auto_device_label"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#424242" />
+
+            <Spinner
+                android:id="@+id/spinnerSourceAA"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Target Bluetooth Speaker Selector -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/target_speaker_label"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#424242" />
+
+            <Spinner
+                android:id="@+id/spinnerTargetSpeaker"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnRefreshDevices"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/refresh_devices_label"
+                android:backgroundTint="#37474F"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
+
+        <!-- Service Control Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:padding="16dp"
+            android:elevation="2dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2. Szolgáltatás állapota"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="#212121"
+                android:layout_marginBottom="8dp" />
+
+            <Switch
+                android:id="@+id/switchService"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/service_switch_label"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:paddingVertical="8dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                android:layout_marginVertical="8dp" />
+
+            <TextView
+                android:id="@+id/tvCallState"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Hívás állapota: IDLE (Nincs hívás)"
+                android:textSize="13sp"
+                android:textColor="#616161"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/tvActiveDevice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Aktív audio eszköz: Nincs / Rendszer alapértelmezett"
+                android:textSize="13sp"
+                android:textColor="#616161" />
+        </LinearLayout>
+
+        <!-- Testing Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:padding="16dp"
+            android:elevation="2dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="3. Diagnosztika és Manuális Teszt"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="#212121"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnTestRoute"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/test_button_label"
+                android:backgroundTint="#00897B"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnResetRoute"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/reset_button_label"
+                android:layout_marginTop="4dp"
+                android:backgroundTint="#78909C"
+                android:textColor="#FFFFFF" />
+        </LinearLayout>
+
+        <!-- Live Event Log -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Valós idejű eseménynapló:"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#424242"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tvLog"
+            android:layout_width="match_parent"
+            android:layout_height="140dp"
+            android:background="#263238"
+            android:textColor="#80CBC4"
+            android:padding="10dp"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:scrollbars="vertical"
+            android:text="[Rendszer kész] Várakozás indításra..." />
+
+    </LinearLayout>
+</ScrollView>
