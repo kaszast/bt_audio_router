@@ -15,6 +15,10 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.telephony.TelephonyManager
 import android.text.method.ScrollingMovementMethod
 import android.view.View
@@ -55,9 +59,11 @@ class MainActivity : Activity() {
 
     private val pairedDevices = mutableListOf<BtDeviceItem>()
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private var headsetProxy: BluetoothProfile? = null
     private var a2dpProxy: BluetoothProfile? = null
+    private var directTts: TextToSpeech? = null
 
     private val profileListener = object : BluetoothProfile.ServiceListener {
         override fun onServiceConnected(profile: Int, proxy: BluetoothProfile?) {
@@ -158,6 +164,8 @@ class MainActivity : Activity() {
         val adapter = btManager.adapter
         headsetProxy?.let { adapter?.closeProfileProxy(BluetoothProfile.HEADSET, it) }
         a2dpProxy?.let { adapter?.closeProfileProxy(BluetoothProfile.A2DP, it) }
+        directTts?.stop()
+        directTts?.shutdown()
     }
 
     private fun initViews() {
@@ -203,13 +211,14 @@ class MainActivity : Activity() {
         }
 
         btnTestRoute.setOnClickListener {
-            val intent = Intent(this, AudioRoutingService::class.java).apply {
-                action = AudioRoutingService.ACTION_TEST_ROUTE
-            }
             if (AudioRoutingService.isRunning) {
+                val intent = Intent(this, AudioRoutingService::class.java).apply {
+                    action = AudioRoutingService.ACTION_TEST_ROUTE
+                }
                 startService(intent)
             } else {
-                startAudioService(intent)
+                // Szolgáltatás hiányában közvetlen TTS felolvasás a helyi csatornákon
+                performDirectTtsTest()
             }
         }
 
@@ -222,6 +231,53 @@ class MainActivity : Activity() {
             } else {
                 audioManager.clearCommunicationDevice()
                 updateStatus()
+            }
+        }
+    }
+
+    /**
+     * Közvetlen TTS felolvasási teszt a hívási és média csatornákon, ha a háttérszolgáltatás nem fut.
+     */
+    private fun performDirectTtsTest() {
+        appendLog(getString(R.string.test_mode_tts_start))
+        val callText = getString(R.string.test_call_channel_tts)
+        val mediaText = getString(R.string.test_media_channel_tts)
+
+        directTts?.stop()
+        directTts?.shutdown()
+
+        directTts = TextToSpeech(applicationContext) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                directTts?.language = Locale.getDefault()
+
+                // 1. Híváscsatorna felolvasás (3x)
+                val callBundle = Bundle().apply {
+                    putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+                }
+                for (i in 1..3) {
+                    directTts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "direct_call_$i")
+                }
+
+                // 2. Médiacsatorna felolvasás (3x)
+                val mediaBundle = Bundle().apply {
+                    putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+                }
+                for (i in 1..3) {
+                    directTts?.speak(mediaText, TextToSpeech.QUEUE_ADD, mediaBundle, "direct_media_$i")
+                }
+
+                directTts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {}
+                    override fun onDone(utteranceId: String?) {
+                        if (utteranceId == "direct_media_3") {
+                            mainHandler.post {
+                                appendLog(getString(R.string.test_mode_tts_success))
+                            }
+                        }
+                    }
+                    @Deprecated("Deprecated in Java")
+                    override fun onError(utteranceId: String?) {}
+                })
             }
         }
     }

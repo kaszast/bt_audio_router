@@ -48,7 +48,7 @@
     <string name="test_mode_tts_success">Audio channels test completed successfully.</string>
 
     <string name="section3_title">3. Diagnostics &amp; Manual Test</string>
-    <string name="test_button_label">Test Audio Channels (3x Speech Test)</string>
+    <string name="test_button_label">Test Routing (SCO)</string>
     <string name="reset_button_label">Reset (Clear Route)</string>
 
     <string name="log_label">Live Event Log:</string>

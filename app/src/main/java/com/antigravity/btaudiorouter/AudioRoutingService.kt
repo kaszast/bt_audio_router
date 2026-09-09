@@ -34,7 +34,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     private lateinit var prefs: DevicePreferenceManager
 
     private var tts: TextToSpeech? = null
-    private var isTtsReady = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isCallActive = false
@@ -54,7 +53,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         log(getString(R.string.test_mode_tts_success))
         isTestMode = false
         stopWatchdog()
-        audioManager.clearCommunicationDevice()
+        clearAudioRoute()
         notifyStatusUpdate()
         updatePersistentNotification()
     }
@@ -116,8 +115,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val result = tts?.setLanguage(Locale.getDefault())
-            isTtsReady = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+            tts?.setLanguage(Locale.getDefault())
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {}
                 override fun onDone(utteranceId: String?) {
@@ -126,12 +124,13 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
                             log(getString(R.string.test_mode_tts_success))
                             isTestMode = false
                             stopWatchdog()
-                            audioManager.clearCommunicationDevice()
+                            clearAudioRoute()
                             notifyStatusUpdate()
                             updatePersistentNotification()
                         }
                     }
                 }
+                @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {}
             })
         }
@@ -154,7 +153,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
             isTestMode = false
             stopWatchdog()
             tts?.stop()
-            audioManager.clearCommunicationDevice()
+            clearAudioRoute()
             notifyStatusUpdate()
             updatePersistentNotification()
             return START_STICKY
@@ -209,7 +208,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
                 }
             }
 
-            // Biztonsági időzítő (15 mp), ha a TTS listener nem futna le
             mainHandler.removeCallbacks(testTimeoutRunnable)
             mainHandler.postDelayed(testTimeoutRunnable, 15000L)
             updatePersistentNotification()
@@ -233,12 +231,17 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
             stopWatchdog()
             mainHandler.removeCallbacks(testTimeoutRunnable)
             tts?.stop()
-            log("Call ended. Clearing communication device...")
-            audioManager.clearCommunicationDevice()
+            log("Call ended. Clearing audio route...")
+            clearAudioRoute()
             updatePersistentNotification()
         }
     }
 
+    /**
+     * Enforces the target Bluetooth SCO communication device.
+     * Combines MODE_IN_CALL, setCommunicationDevice, and startBluetoothSco for Android Auto headunits.
+     */
+    @Suppress("DEPRECATION")
     fun enforceTargetAudioRoute(): Boolean {
         if (!isCallActive && !isTestMode) {
             return false
@@ -263,15 +266,36 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
             return false
         }
 
-        val currentDevice = audioManager.communicationDevice
-        if (currentDevice?.id == targetDevice.id) {
-            return true
-        }
+        try {
+            // 1. Set mode to MODE_IN_CALL so AudioPolicy knows an active call is taking place
+            audioManager.mode = AudioManager.MODE_IN_CALL
 
-        val success = audioManager.setCommunicationDevice(targetDevice)
-        log("setCommunicationDevice -> ${targetDevice.productName} [${targetDevice.address}], success: $success")
-        notifyStatusUpdate()
-        return success
+            // 2. Modern setCommunicationDevice API
+            val success = audioManager.setCommunicationDevice(targetDevice)
+
+            // 3. Force Bluetooth SCO link for Android Auto / Yuehoo headunits
+            audioManager.isBluetoothScoOn = true
+            audioManager.startBluetoothSco()
+
+            log("enforceTargetAudioRoute -> ${targetDevice.productName} [${targetDevice.address}], success: $success")
+            notifyStatusUpdate()
+            return success
+        } catch (e: Exception) {
+            log("Error enforcing target audio route: ${e.message}")
+            return false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun clearAudioRoute() {
+        try {
+            audioManager.isBluetoothScoOn = false
+            audioManager.stopBluetoothSco()
+            audioManager.clearCommunicationDevice()
+            audioManager.mode = AudioManager.MODE_NORMAL
+        } catch (e: Exception) {
+            log("Error clearing audio route: ${e.message}")
+        }
     }
 
     private fun startWatchdog() {
@@ -383,7 +407,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         tts?.shutdown()
         audioManager.removeOnCommunicationDeviceChangedListener(deviceChangedListener)
         telephonyManager.unregisterTelephonyCallback(telephonyCallback)
-        audioManager.clearCommunicationDevice()
+        clearAudioRoute()
         log("Service stopped.")
         notifyStatusUpdate()
     }
