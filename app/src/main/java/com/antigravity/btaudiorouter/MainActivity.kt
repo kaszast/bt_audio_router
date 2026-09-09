@@ -3,11 +3,14 @@ package com.antigravity.btaudiorouter
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Dialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -23,13 +26,16 @@ import android.telephony.TelephonyManager
 import android.text.method.ScrollingMovementMethod
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,6 +61,8 @@ class MainActivity : Activity() {
     private lateinit var tvActiveDevice: TextView
     private lateinit var btnTestRoute: Button
     private lateinit var btnResetRoute: Button
+    private lateinit var btnCopyLog: Button
+    private lateinit var btnExpandLog: Button
     private lateinit var tvLog: TextView
 
     private val pairedDevices = mutableListOf<BtDeviceItem>()
@@ -179,6 +187,8 @@ class MainActivity : Activity() {
         tvActiveDevice = findViewById(R.id.tvActiveDevice)
         btnTestRoute = findViewById(R.id.btnTestRoute)
         btnResetRoute = findViewById(R.id.btnResetRoute)
+        btnCopyLog = findViewById(R.id.btnCopyLog)
+        btnExpandLog = findViewById(R.id.btnExpandLog)
         tvLog = findViewById(R.id.tvLog)
 
         tvLog.movementMethod = ScrollingMovementMethod()
@@ -217,7 +227,6 @@ class MainActivity : Activity() {
                 }
                 startService(intent)
             } else {
-                // Szolgáltatás hiányában közvetlen TTS felolvasás a helyi csatornákon
                 performDirectTtsTest()
             }
         }
@@ -233,11 +242,116 @@ class MainActivity : Activity() {
                 updateStatus()
             }
         }
+
+        btnCopyLog.setOnClickListener {
+            copyLogToClipboard()
+        }
+
+        btnExpandLog.setOnClickListener {
+            showFullscreenLogDialog()
+        }
+
+        tvLog.setOnClickListener {
+            showFullscreenLogDialog()
+        }
+    }
+
+    private fun copyLogToClipboard() {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("BTAudioRouter Log", tvLog.text)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, getString(R.string.log_copied_toast), Toast.LENGTH_SHORT).show()
     }
 
     /**
-     * Közvetlen TTS felolvasási teszt a hívási és média csatornákon, ha a háttérszolgáltatás nem fut.
+     * Teljes képernyős, kijelölhető és görgethető eseménynapló ablak megnyitása.
      */
+    private fun showFullscreenLogDialog() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24, 24, 24, 24)
+            setBackgroundColor(0xFF263238.toInt())
+        }
+
+        val title = TextView(this).apply {
+            text = getString(R.string.fullscreen_log_title)
+            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 16f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setPadding(0, 0, 0, 16)
+        }
+
+        val scrollView = ScrollView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1.0f
+            )
+        }
+
+        val tvFullLog = TextView(this).apply {
+            text = tvLog.text
+            setTextColor(0xFF80CBC4.toInt())
+            textSize = 12f
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(12, 12, 12, 12)
+            setBackgroundColor(0xFF1C242B.toInt())
+        }
+
+        scrollView.addView(tvFullLog)
+
+        val buttonBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 16, 0, 0)
+        }
+
+        val btnCopy = Button(this).apply {
+            text = getString(R.string.btn_copy_log)
+            setBackgroundColor(0xFF0284C7.toInt())
+            setTextColor(0xFFFFFFFF.toInt())
+            setOnClickListener {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("BTAudioRouter Full Log", tvFullLog.text)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this@MainActivity, getString(R.string.log_copied_toast), Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        val btnClose = Button(this).apply {
+            text = getString(R.string.btn_close)
+            setBackgroundColor(0xFF37474F.toInt())
+            setTextColor(0xFFFFFFFF.toInt())
+            val params = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginStart = 16
+            }
+            layoutParams = params
+            setOnClickListener {
+                dialog.dismiss()
+            }
+        }
+
+        buttonBar.addView(btnCopy)
+        buttonBar.addView(btnClose)
+
+        layout.addView(title)
+        layout.addView(scrollView)
+        layout.addView(buttonBar)
+
+        dialog.setContentView(layout)
+        dialog.window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        dialog.show()
+    }
+
     private fun performDirectTtsTest() {
         appendLog(getString(R.string.test_mode_tts_start))
         val callText = getString(R.string.test_call_channel_tts)
@@ -250,7 +364,6 @@ class MainActivity : Activity() {
             if (status == TextToSpeech.SUCCESS) {
                 directTts?.language = Locale.getDefault()
 
-                // 1. Híváscsatorna felolvasás (3x)
                 val callBundle = Bundle().apply {
                     putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
                 }
@@ -258,7 +371,6 @@ class MainActivity : Activity() {
                     directTts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "direct_call_$i")
                 }
 
-                // 2. Médiacsatorna felolvasás (3x)
                 val mediaBundle = Bundle().apply {
                     putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
                 }

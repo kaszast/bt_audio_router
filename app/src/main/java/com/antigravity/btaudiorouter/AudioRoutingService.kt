@@ -106,7 +106,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         audioManager.addOnCommunicationDeviceChangedListener(mainExecutor, deviceChangedListener)
         telephonyManager.registerTelephonyCallback(mainExecutor, telephonyCallback)
 
-        // Text-To-Speech motor inicializálása
         tts = TextToSpeech(applicationContext, this)
 
         isRunning = true
@@ -176,10 +175,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         return START_STICKY
     }
 
-    /**
-     * SCO Teszt Text-To-Speech (TTS) felolvasással:
-     * 3-szor kimondja a híváscsatornán (STREAM_VOICE_CALL), majd 3-szor a médiacsatornán (STREAM_MUSIC).
-     */
     private fun performAudioChannelsTtsTest() {
         log(getString(R.string.test_mode_tts_start))
         isTestMode = true
@@ -191,7 +186,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
 
         mainHandler.postDelayed({
             if (tts != null) {
-                // 1. Híváscsatorna tesztelése (3x)
                 val callBundle = Bundle().apply {
                     putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
                 }
@@ -199,7 +193,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
                     tts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "test_call_$i")
                 }
 
-                // 2. Médiacsatorna tesztelése (3x)
                 val mediaBundle = Bundle().apply {
                     putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
                 }
@@ -237,9 +230,67 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun getAudioModeName(mode: Int): String = when (mode) {
+        AudioManager.MODE_NORMAL -> "MODE_NORMAL ($mode)"
+        AudioManager.MODE_RINGTONE -> "MODE_RINGTONE ($mode)"
+        AudioManager.MODE_IN_CALL -> "MODE_IN_CALL ($mode)"
+        AudioManager.MODE_IN_COMMUNICATION -> "MODE_IN_COMMUNICATION ($mode)"
+        else -> "MODE_OTHER ($mode)"
+    }
+
+    private fun getCallStateName(state: Int): String = when (state) {
+        TelephonyManager.CALL_STATE_RINGING -> "RINGING ($state)"
+        TelephonyManager.CALL_STATE_OFFHOOK -> "OFFHOOK ($state)"
+        TelephonyManager.CALL_STATE_IDLE -> "IDLE ($state)"
+        else -> "UNKNOWN ($state)"
+    }
+
+    private fun getDeviceTypeName(type: Int): String = when (type) {
+        AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "TYPE_BUILTIN_EARPIECE ($type)"
+        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "TYPE_BUILTIN_SPEAKER ($type)"
+        AudioDeviceInfo.TYPE_WIRED_HEADSET -> "TYPE_WIRED_HEADSET ($type)"
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "TYPE_WIRED_HEADPHONES ($type)"
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> "TYPE_BLUETOOTH_SCO ($type)"
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> "TYPE_BLUETOOTH_A2DP ($type)"
+        AudioDeviceInfo.TYPE_HDMI -> "TYPE_HDMI ($type)"
+        AudioDeviceInfo.TYPE_TELEPHONY -> "TYPE_TELEPHONY ($type)"
+        AudioDeviceInfo.TYPE_BUS -> "TYPE_BUS ($type)"
+        AudioDeviceInfo.TYPE_BLE_HEADSET -> "TYPE_BLE_HEADSET ($type)"
+        AudioDeviceInfo.TYPE_BLE_SPEAKER -> "TYPE_BLE_SPEAKER ($type)"
+        else -> "TYPE_OTHER ($type)"
+    }
+
+    @Suppress("DEPRECATION")
+    private fun logDetailedDiagnostics(tag: String) {
+        val sb = StringBuilder()
+        sb.append("\n=== DIAGNOSTICS [$tag] ===\n")
+        sb.append("OS: Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) | ${Build.MANUFACTURER} ${Build.MODEL}\n")
+        sb.append("Audio Mode: ${getAudioModeName(audioManager.mode)} | BT SCO: ${audioManager.isBluetoothScoOn} | Speaker: ${audioManager.isSpeakerphoneOn}\n")
+        sb.append("Call State: ${getCallStateName(telephonyManager.callState)}\n")
+        sb.append("Target Config: [${prefs.targetSpeakerName}] MAC=[${prefs.targetSpeakerMac}]\n")
+        sb.append("Source AA Config: [${prefs.sourceAaName}] MAC=[${prefs.sourceAaMac}]\n")
+
+        val commDev = audioManager.communicationDevice
+        sb.append("Active Comm Dev: ${if (commDev != null) "${commDev.productName} [${getDeviceTypeName(commDev.type)}, id=${commDev.id}, addr=${commDev.address}]" else "NONE/NULL"}\n")
+
+        val commDevices = audioManager.availableCommunicationDevices
+        sb.append("Available Comm Devices (${commDevices.size}):\n")
+        commDevices.forEachIndexed { i, dev ->
+            sb.append("  $i) [${dev.productName}] ${getDeviceTypeName(dev.type)} id=${dev.id} addr=[${dev.address}]\n")
+        }
+
+        val outputDevices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        sb.append("All Output Devices (${outputDevices.size}):\n")
+        outputDevices.forEachIndexed { i, dev ->
+            sb.append("  $i) [${dev.productName}] ${getDeviceTypeName(dev.type)} id=${dev.id} addr=[${dev.address}]\n")
+        }
+        sb.append("=========================\n")
+
+        log(sb.toString())
+    }
+
     /**
      * Enforces the target Bluetooth SCO communication device.
-     * Combines MODE_IN_CALL, setCommunicationDevice, and startBluetoothSco for Android Auto headunits.
      */
     @Suppress("DEPRECATION")
     fun enforceTargetAudioRoute(): Boolean {
@@ -247,37 +298,53 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
             return false
         }
 
+        logDetailedDiagnostics("ROUTING_ATTEMPT")
+
         val targetMac = prefs.targetSpeakerMac
-        if (targetMac.isNullOrEmpty()) {
-            log("ERROR: No target speaker MAC set!")
+        val targetName = prefs.targetSpeakerName
+        val sourceMac = prefs.sourceAaMac
+        val sourceName = prefs.sourceAaName
+
+        if (targetMac.isNullOrEmpty() && targetName.isNullOrEmpty()) {
+            log("ERROR: No target speaker set!")
             return false
         }
 
         val availableDevices = audioManager.availableCommunicationDevices
-        val targetDevice = availableDevices.firstOrNull { device ->
-            device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
-                    device.address.equals(targetMac, ignoreCase = true)
-        } ?: availableDevices.firstOrNull { device ->
-            device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+
+        // 1. Match exact MAC address
+        var targetDevice = availableDevices.firstOrNull { device ->
+            !targetMac.isNullOrEmpty() && device.address.equals(targetMac, ignoreCase = true)
+        }
+
+        // 2. Match Device Name (if MAC address is masked/blank)
+        if (targetDevice == null && !targetName.isNullOrEmpty()) {
+            targetDevice = availableDevices.firstOrNull { device ->
+                device.productName.toString().contains(targetName, ignoreCase = true)
+            }
+        }
+
+        // 3. Fallback to SCO device THAT IS NOT THE SOURCE ANDROID AUTO DEVICE
+        if (targetDevice == null) {
+            targetDevice = availableDevices.firstOrNull { device ->
+                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
+                        (sourceMac.isNullOrEmpty() || !device.address.equals(sourceMac, ignoreCase = true)) &&
+                        (sourceName.isNullOrEmpty() || !device.productName.toString().contains(sourceName, ignoreCase = true))
+            }
         }
 
         if (targetDevice == null) {
-            log("WARNING: Target BT speaker ($targetMac) not found in active SCO devices!")
+            log("WARNING: Target BT speaker [$targetName / $targetMac] NOT found in available SCO devices!")
             return false
         }
 
         try {
-            // 1. Set mode to MODE_IN_CALL so AudioPolicy knows an active call is taking place
             audioManager.mode = AudioManager.MODE_IN_CALL
-
-            // 2. Modern setCommunicationDevice API
             val success = audioManager.setCommunicationDevice(targetDevice)
-
-            // 3. Force Bluetooth SCO link for Android Auto / Yuehoo headunits
             audioManager.isBluetoothScoOn = true
             audioManager.startBluetoothSco()
 
-            log("enforceTargetAudioRoute -> ${targetDevice.productName} [${targetDevice.address}], success: $success")
+            log("ROUTING SUCCESS -> Set to ${targetDevice.productName} [${targetDevice.address}] (id=${targetDevice.id}), setCommDev Result: $success")
             notifyStatusUpdate()
             return success
         } catch (e: Exception) {

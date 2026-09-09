@@ -47,6 +47,12 @@
     <string name="test_mode_tts_start">SCO TESZT: Hívási és Média csatornák tesztelése felolvasással (3x)...</string>
     <string name="test_mode_tts_success">Hívási és Média csatorna teszt sikeresen lefutott.</string>
 
+    <string name="btn_copy_log">Másolás</string>
+    <string name="btn_expand_log">Teljes képernyő</string>
+    <string name="btn_close">Bezárás</string>
+    <string name="log_copied_toast">Napló kimásolva a vágólapra!</string>
+    <string name="fullscreen_log_title">Részletes Eseménynapló (Kijelölhető szöveg)</string>
+
     <string name="section3_title">3. Diagnosztika és Manuális Teszt</string>
     <string name="test_button_label">Átirányítás tesztelése (SCO)</string>
     <string name="reset_button_label">Visszaállítás (Clear Route)</string>

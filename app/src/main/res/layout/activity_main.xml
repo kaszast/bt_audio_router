@@ -215,26 +215,58 @@
                 android:textColor="#FFFFFF" />
         </LinearLayout>
 
-        <!-- Live Event Log -->
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- Live Event Log Header & Actions -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/log_label"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:textColor="#424242"
-            android:layout_marginBottom="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
 
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/log_label"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#424242" />
+
+            <Button
+                android:id="@+id/btnCopyLog"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="@string/btn_copy_log"
+                android:textSize="10sp"
+                android:backgroundTint="#0284C7"
+                android:textColor="#FFFFFF"
+                android:paddingHorizontal="8dp" />
+
+            <Button
+                android:id="@+id/btnExpandLog"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="4dp"
+                android:text="@string/btn_expand_log"
+                android:textSize="10sp"
+                android:backgroundTint="#37474F"
+                android:textColor="#FFFFFF"
+                android:paddingHorizontal="8dp" />
+        </LinearLayout>
+
+        <!-- Live Event Log Box -->
         <TextView
             android:id="@+id/tvLog"
             android:layout_width="match_parent"
-            android:layout_height="140dp"
+            android:layout_height="160dp"
             android:background="#263238"
             android:textColor="#80CBC4"
             android:padding="10dp"
             android:fontFamily="monospace"
             android:textSize="11sp"
             android:scrollbars="vertical"
+            android:textIsSelectable="true"
+            android:focusable="true"
             android:text="@string/log_initial" />
 
     </LinearLayout>
