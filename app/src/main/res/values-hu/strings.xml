@@ -45,6 +45,11 @@
     <string name="test_mode_active">MANUÁLIS TESZT: Audio kényszerítése erre: %1$s (5 mp)...</string>
     <string name="test_mode_ended">Manuális teszt véget ért. Audio útvonal visszaállítva.</string>
 
+    <string name="ping_button_label">Hangjelzés teszt (Cél Kihangosító Ping)</string>
+    <string name="ping_test_started">PING TESZT: Halk ping hang lejátszása a cél kihangosítón (%1$s)...</string>
+    <string name="ping_test_success">Ping teszt sikeresen lefutott.</string>
+    <string name="ping_test_failed">Ping teszt HIBA: A cél kihangosító (%1$s) nincs csatlakoztatva!</string>
+
     <string name="section3_title">3. Diagnosztika és Manuális Teszt</string>
     <string name="test_button_label">Átirányítás tesztelése (5 mp SCO Teszt)</string>
     <string name="reset_button_label">Visszaállítás (Clear Route)</string>

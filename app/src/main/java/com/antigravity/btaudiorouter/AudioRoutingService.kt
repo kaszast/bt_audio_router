@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -111,6 +112,11 @@ class AudioRoutingService : Service() {
             return START_NOT_STICKY
         }
 
+        if (intent?.action == ACTION_PING_TARGET) {
+            performPingTest()
+            return START_STICKY
+        }
+
         if (intent?.action == ACTION_TEST_ROUTE) {
             val targetName = prefs.targetSpeakerName ?: prefs.targetSpeakerMac ?: getString(R.string.not_selected)
             log(getString(R.string.test_mode_active, targetName))
@@ -150,6 +156,62 @@ class AudioRoutingService : Service() {
         return START_STICKY
     }
 
+    /**
+     * Diagnosztikai Ping Teszt:
+     * Halk hangjelzést ad ki a célként megadott Bluetooth kihangosító eszközön.
+     * Működik akkor is, ha az átirányítás aktív, és akkor is, ha nyugalmi (idle) állapotban van.
+     */
+    private fun performPingTest() {
+        val targetMac = prefs.targetSpeakerMac
+        val targetName = prefs.targetSpeakerName ?: prefs.targetSpeakerMac ?: getString(R.string.not_selected)
+
+        if (targetMac.isNullOrEmpty()) {
+            log(getString(R.string.ping_test_failed, targetName))
+            return
+        }
+
+        log(getString(R.string.ping_test_started, targetName))
+
+        mainHandler.post {
+            val availableDevices = audioManager.availableCommunicationDevices
+            val targetDevice = availableDevices.firstOrNull { device ->
+                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
+                        device.address.equals(targetMac, ignoreCase = true)
+            } ?: availableDevices.firstOrNull { device ->
+                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+            }
+
+            val wasRoutingActive = isCallActive || isTestMode
+
+            if (targetDevice != null) {
+                if (!wasRoutingActive) {
+                    audioManager.setCommunicationDevice(targetDevice)
+                }
+
+                mainHandler.postDelayed({
+                    try {
+                        val toneGen = ToneGenerator(AudioManager.STREAM_VOICE_CALL, 35)
+                        toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 250)
+                        mainHandler.postDelayed({
+                            toneGen.release()
+                            if (!wasRoutingActive) {
+                                audioManager.clearCommunicationDevice()
+                            }
+                            log(getString(R.string.ping_test_success))
+                        }, 400)
+                    } catch (e: Exception) {
+                        log("Ping test error: ${e.message}")
+                        if (!wasRoutingActive) {
+                            audioManager.clearCommunicationDevice()
+                        }
+                    }
+                }, 300)
+            } else {
+                log(getString(R.string.ping_test_failed, targetName))
+            }
+        }
+    }
+
     private fun handleCallStarted() {
         if (!isCallActive) {
             isCallActive = true
@@ -172,13 +234,8 @@ class AudioRoutingService : Service() {
         }
     }
 
-    /**
-     * Enforces the target Bluetooth SCO communication device.
-     * MUST ONLY be called during an active call (`isCallActive == true`) or active manual test mode (`isTestMode == true`).
-     */
     fun enforceTargetAudioRoute(): Boolean {
         if (!isCallActive && !isTestMode) {
-            // Idle state: do not force communication device!
             return false
         }
 
@@ -331,6 +388,7 @@ class AudioRoutingService : Service() {
         const val NOTIFICATION_ID = 2001
         const val ACTION_STOP_SERVICE = "com.antigravity.btaudiorouter.ACTION_STOP"
         const val ACTION_TEST_ROUTE = "com.antigravity.btaudiorouter.ACTION_TEST"
+        const val ACTION_PING_TARGET = "com.antigravity.btaudiorouter.ACTION_PING_TARGET"
         const val ACTION_RESET_ROUTE = "com.antigravity.btaudiorouter.ACTION_RESET"
         const val ACTION_REFRESH_NOTIFICATION = "com.antigravity.btaudiorouter.ACTION_REFRESH_NOTIF"
         const val WATCHDOG_INTERVAL_MS = 500L

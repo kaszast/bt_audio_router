@@ -45,6 +45,11 @@
     <string name="test_mode_active">MANUAL TEST: Forcing audio to %1$s for 5 seconds...</string>
     <string name="test_mode_ended">Manual test finished. Route cleared.</string>
 
+    <string name="ping_button_label">Sound Ping Test (Target Speaker)</string>
+    <string name="ping_test_started">PING TEST: Playing soft ping on target speaker (%1$s)...</string>
+    <string name="ping_test_success">Ping test completed successfully.</string>
+    <string name="ping_test_failed">Ping test FAILED: Target speaker (%1$s) is not connected!</string>
+
     <string name="section3_title">3. Diagnostics &amp; Manual Test</string>
     <string name="test_button_label">Test Routing (5 sec SCO Test)</string>
     <string name="reset_button_label">Reset (Clear Route)</string>

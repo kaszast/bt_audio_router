@@ -48,6 +48,7 @@ class MainActivity : Activity() {
     private lateinit var switchService: Switch
     private lateinit var tvCallState: TextView
     private lateinit var tvActiveDevice: TextView
+    private lateinit var btnPingTarget: Button
     private lateinit var btnTestRoute: Button
     private lateinit var btnResetRoute: Button
     private lateinit var tvLog: TextView
@@ -137,6 +138,7 @@ class MainActivity : Activity() {
         switchService = findViewById(R.id.switchService)
         tvCallState = findViewById(R.id.tvCallState)
         tvActiveDevice = findViewById(R.id.tvActiveDevice)
+        btnPingTarget = findViewById(R.id.btnPingTarget)
         btnTestRoute = findViewById(R.id.btnTestRoute)
         btnResetRoute = findViewById(R.id.btnResetRoute)
         tvLog = findViewById(R.id.tvLog)
@@ -168,6 +170,17 @@ class MainActivity : Activity() {
                 }
             }
             updateStatus()
+        }
+
+        btnPingTarget.setOnClickListener {
+            val intent = Intent(this, AudioRoutingService::class.java).apply {
+                action = AudioRoutingService.ACTION_PING_TARGET
+            }
+            if (AudioRoutingService.isRunning) {
+                startService(intent)
+            } else {
+                startAudioService(intent)
+            }
         }
 
         btnTestRoute.setOnClickListener {

@@ -198,10 +198,19 @@
                 android:layout_marginBottom="8dp" />
 
             <Button
+                android:id="@+id/btnPingTarget"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/ping_button_label"
+                android:backgroundTint="#0284C7"
+                android:textColor="#FFFFFF" />
+
+            <Button
                 android:id="@+id/btnTestRoute"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/test_button_label"
+                android:layout_marginTop="4dp"
                 android:backgroundTint="#00897B"
                 android:textColor="#FFFFFF" />
 

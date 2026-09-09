@@ -21,6 +21,7 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 ## ✨ Főbb Funkciók
 
 - **Automatikus Hívás-Átirányítás**: Bejövő és kimenő hívások automatikus kezelése.
+- **Cél Kihangosító Ping Teszt (Új Diagnosztika)**: Egyetlen gombnyomással egy halk hangjelzést (ping) játszik le a cél kihangosítón mind aktív átirányítás esetén, mind nyugalmi állapotban.
 - **Kizárólag Csatlakoztatott Eszközök Választhatók**: A választólistákban **kizárólag az éppen csatlakoztatott** Bluetooth eszközök jelennek meg, megelőzve az offline eszközök téves kiválasztását.
 - **Részletes Szolgáltatás- és Profilkijelzés**:
   - Megjeleníti az eszközök által nyújtott szolgáltatásokat: `Telefonhívás (HFP)`, `Média Audio (A2DP)`, `Billentyűzet / Input (HID)`.
@@ -42,8 +43,8 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 
 | Állomány | Szerep / Feladat |
 | :--- | :--- |
-| **`AudioRoutingService.kt`** | A fő előtér-szolgáltatás (`connectedDevice` FGS típus). Kezeli a hívásállapotokat (`TelephonyCallback`), az audio útvonalat (`AudioManager`), az állandó értesítést, és futtatja az Anti-Revert Watchdog időzítőt. |
-| **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli a csatlakoztatott Bluetooth eszközök szűrését, a profil-csatlakozási lekérdezéseket (`HEADSET`, `A2DP`, `HID`), az engedélykéréseket és az automatikusan görgető naplót. |
+| **`AudioRoutingService.kt`** | A fő előtér-szolgáltatás (`connectedDevice` FGS típus). Kezeli a hívásállapotokat (`TelephonyCallback`), az audio útvonalat (`AudioManager`), a Ping diagnosztikát (`ToneGenerator`), az állandó értesítést, és futtatja az Anti-Revert Watchdog időzítőt. |
+| **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli a csatlakoztatott Bluetooth eszközök szűrését, a profil-csatlakozási lekérdezéseket (`HEADSET`, `A2DP`, `HID`), a diagnosztikai gombokat és az automatikusan görgető naplót. |
 | **`BootReceiver.kt`** | `BroadcastReceiver`, amely a telefon bekapcsolása után automatikusan elindítja a szolgáltatást. |
 | **`DevicePreferenceManager.kt`** | `SharedPreferences` wrapper a kiválasztott nevek, MAC címek és állapotok tartós tárolásához. |
 | **`res/values/strings.xml`** | Alapértelmezett Angol nyelvű szövegerőforrások. |
@@ -76,7 +77,7 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
    - **Forrás (Android Auto)**: a fejegységedet.
    - **Cél (Bluetooth kihangosító)**: a hívásokhoz használni kívánt kihangosítót.
 6. Kapcsold be a **Hívás-átirányító háttérszolgáltatás** kapcsolót.
-7. A teszteléshez nyomd meg az **"Átirányítás tesztelése"** gombot (5 másodpercig teszteli a csatornát).
+7. A diagnosztikához kattints a **"Cél Kihangosító Ping Teszt"** gombra (halk csipogást ad ki a kihangosítón).
 
 ---
 ---
@@ -104,6 +105,7 @@ When connected to Android Auto, the Android system automatically routes call aud
 ## ✨ Features
 
 - **Automatic Call Routing**: Hands-free routing for incoming and outgoing calls.
+- **Sound Ping Diagnostic Test (New Feature)**: Plays a soft audio ping on the target Bluetooth speaker with a single tap, whether routing is currently active or idle.
 - **Connected-Only Device Filter**: The selection dropdowns **only list actively connected** Bluetooth devices, preventing selection of offline/unconnected paired devices.
 - **Detailed Service Capability & Profile Badges**:
   - Displays device supported services: `Phone Calls (HFP)`, `Media Audio (A2DP)`, `Keyboard / Input (HID)`.
