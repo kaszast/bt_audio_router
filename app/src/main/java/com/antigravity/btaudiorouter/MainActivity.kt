@@ -89,7 +89,8 @@ class MainActivity : Activity() {
     data class BtDeviceItem(
         val name: String,
         val mac: String,
-        val statusText: String
+        val statusText: String,
+        val isCallCapable: Boolean
     )
 
     private inner class BtDeviceAdapter(
@@ -263,9 +264,6 @@ class MainActivity : Activity() {
         Toast.makeText(this, getString(R.string.log_copied_toast), Toast.LENGTH_SHORT).show()
     }
 
-    /**
-     * Teljes képernyős, kijelölhető és görgethető eseménynapló ablak megnyitása.
-     */
     private fun showFullscreenLogDialog() {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -470,6 +468,10 @@ class MainActivity : Activity() {
 
         val capText = capabilities.joinToString(" + ")
 
+        if (!isCallConnected) {
+            return "$capText | " + getString(R.string.warn_no_hfp)
+        }
+
         val connStatusText = when {
             isCallConnected && isMediaConnected -> getString(R.string.status_connected_both)
             isCallConnected -> getString(R.string.status_connected_call)
@@ -510,13 +512,13 @@ class MainActivity : Activity() {
                     }
 
                     val infoText = getDeviceCapabilitiesAndStatus(dev, isCallConnected, isMediaConnected)
-                    pairedDevices.add(BtDeviceItem(displayName, mac, infoText))
+                    pairedDevices.add(BtDeviceItem(displayName, mac, infoText, isCallConnected))
                 }
             }
         }
 
         if (pairedDevices.isEmpty()) {
-            pairedDevices.add(BtDeviceItem(getString(R.string.no_connected_devices), "", ""))
+            pairedDevices.add(BtDeviceItem(getString(R.string.no_connected_devices), "", "", false))
         }
 
         val adapterList = BtDeviceAdapter(this, pairedDevices)
@@ -555,6 +557,9 @@ class MainActivity : Activity() {
                         prefs.targetSpeakerMac = item.mac
                         prefs.targetSpeakerName = item.name
                         appendLog("Target Handsfree: ${item.name} [${item.mac}]")
+                        if (!item.isCallCapable) {
+                            appendLog(getString(R.string.log_warn_hfp_missing, item.name))
+                        }
                         refreshServiceNotification()
                         updateStatus()
                     }

@@ -40,6 +40,9 @@
     <string name="status_connected_active">Csatlakoztatva</string>
     <string name="no_connected_devices">[Nincs csatlakoztatott Bluetooth eszköz]</string>
 
+    <string name="warn_no_hfp">⚠️ Média csatlakoztatva | ❌ Hívás (HFP) hiányzik! Kapcsold be a "Telefonhívások"-at a BT beállításokban</string>
+    <string name="log_warn_hfp_missing">FIGYELEM: A kiválasztott cél [%1$s] csak Média profilban van! Lépj be a Bluetooth Beállítások -&gt; %1$s menübe, és kapcsold BE a "Telefonhívások" opciót!</string>
+
     <string name="dev_active_idle_format">Rendszer alapértelmezett (Híváskor vált át erre: %1$s)</string>
 
     <string name="test_call_channel_tts">Híváscsatorna tesztelése</string>
