@@ -6,6 +6,7 @@ import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,6 +15,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.telephony.TelephonyManager
+import android.text.method.ScrollingMovementMethod
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
@@ -29,7 +31,7 @@ import java.util.Locale
 /**
  * [MainActivity]
  *
- * Az alkalmazás főképernyője, amely biztosítja a felhasználói felületet (UI).
+ * Az alkalmazás főképernyője.
  */
 class MainActivity : Activity() {
 
@@ -52,8 +54,29 @@ class MainActivity : Activity() {
     private val pairedDevices = mutableListOf<BtDeviceItem>()
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
-    data class BtDeviceItem(val name: String, val mac: String) {
-        override fun toString(): String = "$name ($mac)"
+    // Bluetooth profiltárolók a csatlakozási állapotok pontos lekéréséhez
+    private var headsetProxy: BluetoothProfile? = null
+    private var a2dpProxy: BluetoothProfile? = null
+
+    private val profileListener = object : BluetoothProfile.ServiceListener {
+        override fun onServiceConnected(profile: Int, proxy: BluetoothProfile?) {
+            if (profile == BluetoothProfile.HEADSET) headsetProxy = proxy
+            if (profile == BluetoothProfile.A2DP) a2dpProxy = proxy
+            loadPairedDevices()
+        }
+
+        override fun onServiceDisconnected(profile: Int) {
+            if (profile == BluetoothProfile.HEADSET) headsetProxy = null
+            if (profile == BluetoothProfile.A2DP) a2dpProxy = null
+        }
+    }
+
+    data class BtDeviceItem(
+        val name: String,
+        val mac: String,
+        val statusText: String
+    ) {
+        override fun toString(): String = "$name ($mac)\n   └ $statusText"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +89,14 @@ class MainActivity : Activity() {
 
         initViews()
         setupListeners()
+        initBluetoothProxies()
+    }
+
+    private fun initBluetoothProxies() {
+        val btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val adapter = btManager.adapter
+        adapter?.getProfileProxy(this, profileListener, BluetoothProfile.HEADSET)
+        adapter?.getProfileProxy(this, profileListener, BluetoothProfile.A2DP)
     }
 
     override fun onResume() {
@@ -89,6 +120,14 @@ class MainActivity : Activity() {
         AudioRoutingService.logListener = null
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        val btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val adapter = btManager.adapter
+        headsetProxy?.let { adapter?.closeProfileProxy(BluetoothProfile.HEADSET, it) }
+        a2dpProxy?.let { adapter?.closeProfileProxy(BluetoothProfile.A2DP, it) }
+    }
+
     private fun initViews() {
         layoutPermissions = findViewById(R.id.layoutPermissions)
         btnGrantPermissions = findViewById(R.id.btnGrantPermissions)
@@ -102,6 +141,9 @@ class MainActivity : Activity() {
         btnResetRoute = findViewById(R.id.btnResetRoute)
         tvLog = findViewById(R.id.tvLog)
 
+        // Eseménynapló görgethetővé tétele
+        tvLog.movementMethod = ScrollingMovementMethod()
+
         switchService.isChecked = AudioRoutingService.isRunning
     }
 
@@ -112,7 +154,8 @@ class MainActivity : Activity() {
 
         btnRefreshDevices.setOnClickListener {
             loadPairedDevices()
-            appendLog("Párosított eszközök frissítve / Devices refreshed.")
+            updateStatus()
+            appendLog("Devices & connection profiles refreshed.")
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->
@@ -130,7 +173,6 @@ class MainActivity : Activity() {
         }
 
         btnTestRoute.setOnClickListener {
-            appendLog("Manuális teszt indítása / Manual test started...")
             val intent = Intent(this, AudioRoutingService::class.java).apply {
                 action = AudioRoutingService.ACTION_TEST_ROUTE
             }
@@ -142,7 +184,6 @@ class MainActivity : Activity() {
         }
 
         btnResetRoute.setOnClickListener {
-            appendLog("Audio útvonal visszaállítása / Audio route reset...")
             val intent = Intent(this, AudioRoutingService::class.java).apply {
                 action = AudioRoutingService.ACTION_RESET_ROUTE
             }
@@ -204,13 +245,36 @@ class MainActivity : Activity() {
         val btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         val adapter: BluetoothAdapter? = btManager.adapter
 
+        val connectedHeadset = headsetProxy?.connectedDevices ?: emptyList()
+        val connectedA2dp = a2dpProxy?.connectedDevices ?: emptyList()
+        val commDevices = audioManager.availableCommunicationDevices
+
         pairedDevices.clear()
         val bonded: Set<BluetoothDevice>? = adapter?.bondedDevices
         if (bonded != null) {
             for (dev in bonded) {
-                val name = dev.name ?: getString(R.string.unknown_device)
+                // Felhasználói becenév (alias) vagy gyári név
+                val displayName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !dev.alias.isNullOrEmpty()) {
+                    dev.alias!!
+                } else {
+                    dev.name ?: getString(R.string.unknown_device)
+                }
+
                 val mac = dev.address
-                pairedDevices.add(BtDeviceItem(name, mac))
+
+                // Csatlakozási profilok ellenőrzése
+                val isCallConnected = connectedHeadset.any { it.address.equals(mac, ignoreCase = true) } ||
+                        commDevices.any { it.address.equals(mac, ignoreCase = true) }
+                val isMediaConnected = connectedA2dp.any { it.address.equals(mac, ignoreCase = true) }
+
+                val statusText = when {
+                    isCallConnected && isMediaConnected -> getString(R.string.dev_status_both)
+                    isCallConnected -> getString(R.string.dev_status_call)
+                    isMediaConnected -> getString(R.string.dev_status_media)
+                    else -> getString(R.string.dev_status_none)
+                }
+
+                pairedDevices.add(BtDeviceItem(displayName, mac, statusText))
             }
         }
 
@@ -231,10 +295,12 @@ class MainActivity : Activity() {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, pos: Int, p3: Long) {
                 if (pos in pairedDevices.indices) {
                     val item = pairedDevices[pos]
-                    prefs.sourceAaMac = item.mac
-                    prefs.sourceAaName = item.name
-                    appendLog("Android Auto: ${item.name} [${item.mac}]")
-                    refreshServiceNotification()
+                    if (prefs.sourceAaMac != item.mac) {
+                        prefs.sourceAaMac = item.mac
+                        prefs.sourceAaName = item.name
+                        appendLog("Android Auto: ${item.name} [${item.mac}]")
+                        refreshServiceNotification()
+                    }
                 }
             }
             override fun onNothingSelected(p0: AdapterView<*>?) {}
@@ -244,10 +310,13 @@ class MainActivity : Activity() {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, pos: Int, p3: Long) {
                 if (pos in pairedDevices.indices) {
                     val item = pairedDevices[pos]
-                    prefs.targetSpeakerMac = item.mac
-                    prefs.targetSpeakerName = item.name
-                    appendLog("Target Handsfree: ${item.name} [${item.mac}]")
-                    refreshServiceNotification()
+                    if (prefs.targetSpeakerMac != item.mac) {
+                        prefs.targetSpeakerMac = item.mac
+                        prefs.targetSpeakerName = item.name
+                        appendLog("Target Handsfree: ${item.name} [${item.mac}]")
+                        refreshServiceNotification()
+                        updateStatus()
+                    }
                 }
             }
             override fun onNothingSelected(p0: AdapterView<*>?) {}
@@ -302,7 +371,8 @@ class MainActivity : Activity() {
             }
             "${commDev.productName ?: getString(R.string.dev_unnamed)} [$typeStr - ${commDev.address ?: "-"}]"
         } else {
-            getString(R.string.dev_default)
+            val targetName = prefs.targetSpeakerName ?: prefs.targetSpeakerMac ?: getString(R.string.not_selected)
+            getString(R.string.dev_active_idle_format, targetName)
         }
         tvActiveDevice.text = getString(R.string.active_device_format, devText)
 
@@ -322,5 +392,13 @@ class MainActivity : Activity() {
         val time = timeFormat.format(Date())
         val logLine = "[$time] $message\n"
         tvLog.append(logLine)
+
+        // Automatikus görgetés az eseménynapló aljára
+        tvLog.post {
+            val scrollAmount = tvLog.layout?.getLineTop(tvLog.lineCount)?.minus(tvLog.height) ?: 0
+            if (scrollAmount > 0) {
+                tvLog.scrollTo(0, scrollAmount)
+            }
+        }
     }
 }

@@ -21,6 +21,10 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 ## ✨ Főbb Funkciók
 
 - **Automatikus Hívás-Átirányítás**: Bejövő és kimenő hívások automatikus kezelése.
+- **Intelligens Eszközlista & Állapotok**:
+  - Megjeleníti az eszközök egyéni becenevét (alias) vagy gyári nevét.
+  - Élőben kijelzi a csatlakozási profilokat: `[Csatlakoztatva: Hívás + Média]`, `[Csatlakoztatva: Média]`, `[Csatlakoztatva: Hívás]`, `[Nincs csatlakoztatva]`.
+- **Biztonságos Audio Útválasztás (Nincs Elnémulás)**: Az audio-útvonal kényszerítése kizárólag aktív hívás vagy manuális teszt során történik. Nyugalmi (IDLE) állapotban a telefon és a csatlakoztatott eszközök normálisan működnek.
 - **Többnyelvű Támogatás (Multilingual)**: Automatikus magyar nyelv, ha a telefon nyelve magyar, egyébként alapértelmezett angol nyelv.
 - **Eszközválasztás**: A telefonhoz párosított Bluetooth eszközök közül külön kiválasztható az Android Auto forrás és a cél kihangosító.
 - **Anti-Revert Watchdog**: Felülbírálja az Android Auto automatikus audio-visszaállítási kísérleteit.
@@ -28,8 +32,7 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 - **Android 14+ Kompatibilitás**: A `connectedDevice` előtér-szolgáltatási típussal biztonságosan és hiba nélkül fut Android 14, 15 és 16 rendszereken.
 - **Cyberpunk OLED Ikon**: Modern, lekerekített vektorgrafikus alkalmazásikon (Adaptive Icon).
 - **Automatikus Indítás**: A rendszer újraindítása után (`BOOT_COMPLETED`) automatikusan elindul, ha a szolgáltatás be volt kapcsolva.
-- **Diagnosztika és Élő Napló**: A főképernyőn élőben követhető az aktív kommunikációs eszköz, a hívás állapota és a valós idejű eseménynapló.
-- **Manuális Teszt és Visszaállítás**: Teszt gomb az audio-útvonal azonnali kipróbálásához hívás nélkül is.
+- **Automata Görgetésű Eseménynapló**: Az élő eseménynapló ablak automatikusan a legfrissebb bejegyzésekre görget.
 
 ---
 
@@ -38,7 +41,7 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 | Állomány | Szerep / Feladat |
 | :--- | :--- |
 | **`AudioRoutingService.kt`** | A fő előtér-szolgáltatás (`connectedDevice` FGS típus). Kezeli a hívásállapotokat (`TelephonyCallback`), az audio útvonalat (`AudioManager`), az állandó értesítést, és futtatja az Anti-Revert Watchdog időzítőt. |
-| **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli az engedélykéréseket, a Bluetooth eszközök kiválasztását, a szolgáltatás ki/bekapcsolását és a napló megjelenítését. |
+| **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli a Bluetooth profil-csatlakozási lekérdezéseket (`HEADSET` & `A2DP`), az engedélykéréseket, az automatikusan görgető naplót és az eszközválasztást. |
 | **`BootReceiver.kt`** | `BroadcastReceiver`, amely a telefon bekapcsolása után automatikusan elindítja a szolgáltatást. |
 | **`DevicePreferenceManager.kt`** | `SharedPreferences` wrapper a kiválasztott nevek, MAC címek és állapotok tartós tárolásához. |
 | **`res/values/strings.xml`** | Alapértelmezett Angol nyelvű szövegerőforrások. |
@@ -61,33 +64,16 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 
 ---
 
-## 🎓 Útmutató Junior Fejlesztőknek
-
-Ha most ismerkedsz az Android audio-kezeléssel és a háttérszolgáltatásokkal, az alábbi fogalmak megértése kulcsfontosságú a kód tanulmányozásakor:
-
-### 1. Audio Kommunikációs Eszközök (`setCommunicationDevice`)
-Android 12 (API 31) óta a hivatalos és ajánlott API az `AudioManager.setCommunicationDevice(AudioDeviceInfo)`.
-- Az `audioManager.availableCommunicationDevices` visszaadja az összes csatlakoztatott hívási eszközt.
-- Az `AudioDeviceInfo.TYPE_BLUETOOTH_SCO` azonosítja a Bluetooth headseteket/kihangosítókat.
-
-### 2. Előtér-szolgáltatás (Foreground Service) Android 14+ alatt
-Android 14 (API 34) óta kötelező specifikus FGS típust megadni. Mivel a külső Bluetooth kiegészítők vezérlése nem igényli a rendszertárcsázó (`DIALER`) szerepkört, a szolgáltatás a `connectedDevice` típust használja a `FOREGROUND_SERVICE_CONNECTED_DEVICE` engedéllyel.
-
-### 3. Többnyelvűség (Localization)
-Az Android automatikusan a `res/values-hu/strings.xml` fájlból tölti be a szövegeket, ha a telefon nyelve magyar, és a `res/values/strings.xml` fájlból minden más nyelv esetén.
-
----
-
 ## 🚀 Használat és Beállítás
 
 1. Töltsd le vagy fordítsd le a **`BTAudioRouter-v1.0.apk`** telepítőt.
 2. Nyisd meg a **BT Audio Router** alkalmazást a telefonodon.
 3. Kattints az **"Engedélyek megadása"** gombra és hagyd jóvá a kért engedélyeket.
-4. Az **1. Eszközök beállítása** résznél válaszd ki:
+4. Az **1. Eszközök beállítása** résznél kattints az **"Eszközök & Állapotok újratöltése"** gombra, majd válaszd ki:
    - **Forrás (Android Auto)**: a fejegységedet.
    - **Cél (Bluetooth kihangosító)**: a hívásokhoz használni kívánt kihangosítót.
 5. Kapcsold be a **Hívás-átirányító háttérszolgáltatás** kapcsolót.
-6. A teszteléshez nyomd meg az **"Átirányítás tesztelése"** gombot.
+6. A teszteléshez nyomd meg az **"Átirányítás tesztelése"** gombot (5 másodpercig teszteli a csatornát).
 
 ---
 ---
@@ -115,6 +101,9 @@ When connected to Android Auto, the Android system automatically routes call aud
 ## ✨ Features
 
 - **Automatic Call Routing**: Hands-free routing for incoming and outgoing calls.
+- **Smart Device List & Profile Badges**: Displays device user aliases/nicknames, along with live connection profiles (`[Connected: Call + Media]`, `[Connected: Call]`, `[Connected: Media]`, `[Disconnected]`).
+- **Safe Audio Routing (No Call Muting)**: Route enforcement only runs during active calls or manual test mode.
+- **Auto-Scrolling Log Window**: Real-time event log automatically scrolls to the newest entries.
 - **Multilingual Localization**: Automatically displays Hungarian if the phone system language is Hungarian; defaults to English for all other system languages.
 - **Device Selector**: Independent selection of Android Auto source and target Bluetooth speaker from paired devices.
 - **Anti-Revert Watchdog**: Overrides Android Auto audio hijacking attempts.
@@ -122,7 +111,6 @@ When connected to Android Auto, the Android system automatically routes call aud
 - **Android 14+ Ready**: Uses `connectedDevice` Foreground Service type to prevent `SecurityException` on Android 14, 15, and 16.
 - **Cyberpunk OLED Launcher Icon**: Modern adaptive vector icon.
 - **Boot Autostart**: Launches automatically after phone reboot (`BOOT_COMPLETED`) if enabled.
-- **Diagnostics & Live Log**: Real-time log viewer and active audio device tracker.
 
 ---
 

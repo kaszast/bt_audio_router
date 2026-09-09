@@ -31,15 +31,25 @@ class AudioRoutingService : Service() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isCallActive = false
+    private var isTestMode = false
     private var isWatchdogRunning = false
 
     private val watchdogRunnable = object : Runnable {
         override fun run() {
-            if (isCallActive) {
+            if (isCallActive || isTestMode) {
                 enforceTargetAudioRoute()
                 mainHandler.postDelayed(this, WATCHDOG_INTERVAL_MS)
             }
         }
+    }
+
+    private val testResetRunnable = Runnable {
+        log(getString(R.string.test_mode_ended))
+        isTestMode = false
+        stopWatchdog()
+        audioManager.clearCommunicationDevice()
+        notifyStatusUpdate()
+        updatePersistentNotification()
     }
 
     private val deviceChangedListener = AudioManager.OnCommunicationDeviceChangedListener { device ->
@@ -47,7 +57,7 @@ class AudioRoutingService : Service() {
         notifyStatusUpdate()
         updatePersistentNotification()
 
-        if (isCallActive) {
+        if (isCallActive || isTestMode) {
             val targetMac = prefs.targetSpeakerMac
             if (targetMac != null && (device == null || !device.address.equals(targetMac, ignoreCase = true))) {
                 log("Revert detected! Re-enforcing audio route...")
@@ -102,14 +112,21 @@ class AudioRoutingService : Service() {
         }
 
         if (intent?.action == ACTION_TEST_ROUTE) {
-            log("Manual test command: routing to target handsfree...")
+            val targetName = prefs.targetSpeakerName ?: prefs.targetSpeakerMac ?: getString(R.string.not_selected)
+            log(getString(R.string.test_mode_active, targetName))
+            isTestMode = true
             enforceTargetAudioRoute()
+            startWatchdog()
+            mainHandler.removeCallbacks(testResetRunnable)
+            mainHandler.postDelayed(testResetRunnable, TEST_DURATION_MS)
             updatePersistentNotification()
             return START_STICKY
         }
 
         if (intent?.action == ACTION_RESET_ROUTE) {
             log("Reset command: Clear communication device...")
+            isTestMode = false
+            stopWatchdog()
             audioManager.clearCommunicationDevice()
             notifyStatusUpdate()
             updatePersistentNotification()
@@ -144,16 +161,27 @@ class AudioRoutingService : Service() {
     }
 
     private fun handleCallEnded() {
-        if (isCallActive) {
+        if (isCallActive || isTestMode) {
             isCallActive = false
+            isTestMode = false
             stopWatchdog()
+            mainHandler.removeCallbacks(testResetRunnable)
             log("Call ended. Clearing communication device...")
             audioManager.clearCommunicationDevice()
             updatePersistentNotification()
         }
     }
 
+    /**
+     * Enforces the target Bluetooth SCO communication device.
+     * MUST ONLY be called during an active call (`isCallActive == true`) or active manual test mode (`isTestMode == true`).
+     */
     fun enforceTargetAudioRoute(): Boolean {
+        if (!isCallActive && !isTestMode) {
+            // Idle state: do not force communication device!
+            return false
+        }
+
         val targetMac = prefs.targetSpeakerMac
         if (targetMac.isNullOrEmpty()) {
             log("ERROR: No target speaker MAC set!")
@@ -232,19 +260,21 @@ class AudioRoutingService : Service() {
             else -> notSelectedStr
         }
 
-        val title = if (isCallActive) {
+        val activeCallState = isCallActive || isTestMode
+
+        val title = if (activeCallState) {
             getString(R.string.notif_title_call)
         } else {
             getString(R.string.notif_title_active)
         }
 
-        val shortText = if (isCallActive) {
+        val shortText = if (activeCallState) {
             getString(R.string.notif_short_call, prefs.targetSpeakerName ?: prefs.targetSpeakerMac ?: unknownDevStr)
         } else {
             getString(R.string.notif_short_idle, prefs.targetSpeakerName ?: notSelectedStr, prefs.sourceAaName ?: notSelectedStr)
         }
 
-        val stateDescription = if (isCallActive) {
+        val stateDescription = if (activeCallState) {
             getString(R.string.notif_desc_call)
         } else {
             getString(R.string.notif_desc_idle)
@@ -286,6 +316,7 @@ class AudioRoutingService : Service() {
         super.onDestroy()
         isRunning = false
         stopWatchdog()
+        mainHandler.removeCallbacks(testResetRunnable)
         audioManager.removeOnCommunicationDeviceChangedListener(deviceChangedListener)
         telephonyManager.unregisterTelephonyCallback(telephonyCallback)
         audioManager.clearCommunicationDevice()
@@ -303,6 +334,7 @@ class AudioRoutingService : Service() {
         const val ACTION_RESET_ROUTE = "com.antigravity.btaudiorouter.ACTION_RESET"
         const val ACTION_REFRESH_NOTIFICATION = "com.antigravity.btaudiorouter.ACTION_REFRESH_NOTIF"
         const val WATCHDOG_INTERVAL_MS = 500L
+        const val TEST_DURATION_MS = 5000L
 
         var isRunning = false
             private set

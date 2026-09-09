@@ -10,7 +10,7 @@
     <string name="section1_title">1. Eszközök beállítása</string>
     <string name="android_auto_device_label">Android Auto eszköz (Forrás):</string>
     <string name="target_speaker_label">Bluetooth kihangosító (Cél):</string>
-    <string name="refresh_devices_label">Eszközök újratöltése</string>
+    <string name="refresh_devices_label">Eszközök &amp; Állapotok újratöltése</string>
 
     <string name="section2_title">2. Szolgáltatás állapota</string>
     <string name="service_switch_label">Hívás-átirányító háttérszolgáltatás</string>
@@ -30,8 +30,17 @@
     <string name="dev_type_headset">Vezetékes headset</string>
     <string name="dev_type_other">Egyéb (%1$d)</string>
 
+    <string name="dev_status_both">[Csatlakoztatva: Hívás + Média]</string>
+    <string name="dev_status_call">[Csatlakoztatva: Hívás]</string>
+    <string name="dev_status_media">[Csatlakoztatva: Média]</string>
+    <string name="dev_status_none">[Nincs csatlakoztatva]</string>
+    <string name="dev_active_idle_format">Rendszer alapértelmezett (Híváskor vált át erre: %1$s)</string>
+
+    <string name="test_mode_active">MANUÁLIS TESZT: Audio kényszerítése erre: %1$s (5 mp)...</string>
+    <string name="test_mode_ended">Manuális teszt véget ért. Audio útvonal visszaállítva.</string>
+
     <string name="section3_title">3. Diagnosztika és Manuális Teszt</string>
-    <string name="test_button_label">Átirányítás tesztelése (Teszt SCO)</string>
+    <string name="test_button_label">Átirányítás tesztelése (5 mp SCO Teszt)</string>
     <string name="reset_button_label">Visszaállítás (Clear Route)</string>
 
     <string name="log_label">Valós idejű eseménynapló:</string>
