@@ -42,16 +42,13 @@
 
     <string name="dev_active_idle_format">System default (Will route to: %1$s during calls)</string>
 
-    <string name="test_mode_active">MANUAL TEST: Forcing audio to %1$s for 5 seconds...</string>
-    <string name="test_mode_ended">Manual test finished. Route cleared.</string>
-
-    <string name="ping_button_label">Sound Ping Test (Target Speaker)</string>
-    <string name="ping_test_started">PING TEST: Playing soft ping on target speaker (%1$s)...</string>
-    <string name="ping_test_success">Ping test completed successfully.</string>
-    <string name="ping_test_failed">Ping test FAILED: Target speaker (%1$s) is not connected!</string>
+    <string name="test_call_channel_tts">Testing call channel</string>
+    <string name="test_media_channel_tts">Testing media channel</string>
+    <string name="test_mode_tts_start">SCO TEST: Speaking on call channel and media channel 3 times...</string>
+    <string name="test_mode_tts_success">Audio channels test completed successfully.</string>
 
     <string name="section3_title">3. Diagnostics &amp; Manual Test</string>
-    <string name="test_button_label">Test Routing (5 sec SCO Test)</string>
+    <string name="test_button_label">Test Audio Channels (3x Speech Test)</string>
     <string name="reset_button_label">Reset (Clear Route)</string>
 
     <string name="log_label">Live Event Log:</string>

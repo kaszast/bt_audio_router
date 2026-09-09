@@ -10,25 +10,31 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
-import android.media.ToneGenerator
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.Log
+import java.util.Locale
 
 /**
  * [AudioRoutingService]
  *
  * Háttérben futó előtér-szolgáltatás (Foreground Service).
  */
-class AudioRoutingService : Service() {
+class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
 
     private lateinit var audioManager: AudioManager
     private lateinit var telephonyManager: TelephonyManager
     private lateinit var prefs: DevicePreferenceManager
+
+    private var tts: TextToSpeech? = null
+    private var isTtsReady = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var isCallActive = false
@@ -44,8 +50,8 @@ class AudioRoutingService : Service() {
         }
     }
 
-    private val testResetRunnable = Runnable {
-        log(getString(R.string.test_mode_ended))
+    private val testTimeoutRunnable = Runnable {
+        log(getString(R.string.test_mode_tts_success))
         isTestMode = false
         stopWatchdog()
         audioManager.clearCommunicationDevice()
@@ -101,8 +107,34 @@ class AudioRoutingService : Service() {
         audioManager.addOnCommunicationDeviceChangedListener(mainExecutor, deviceChangedListener)
         telephonyManager.registerTelephonyCallback(mainExecutor, telephonyCallback)
 
+        // Text-To-Speech motor inicializálása
+        tts = TextToSpeech(applicationContext, this)
+
         isRunning = true
         notifyStatusUpdate()
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = tts?.setLanguage(Locale.getDefault())
+            isTtsReady = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+            tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {}
+                override fun onDone(utteranceId: String?) {
+                    if (utteranceId == "test_media_3") {
+                        mainHandler.post {
+                            log(getString(R.string.test_mode_tts_success))
+                            isTestMode = false
+                            stopWatchdog()
+                            audioManager.clearCommunicationDevice()
+                            notifyStatusUpdate()
+                            updatePersistentNotification()
+                        }
+                    }
+                }
+                override fun onError(utteranceId: String?) {}
+            })
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -112,20 +144,8 @@ class AudioRoutingService : Service() {
             return START_NOT_STICKY
         }
 
-        if (intent?.action == ACTION_PING_TARGET) {
-            performPingTest()
-            return START_STICKY
-        }
-
         if (intent?.action == ACTION_TEST_ROUTE) {
-            val targetName = prefs.targetSpeakerName ?: prefs.targetSpeakerMac ?: getString(R.string.not_selected)
-            log(getString(R.string.test_mode_active, targetName))
-            isTestMode = true
-            enforceTargetAudioRoute()
-            startWatchdog()
-            mainHandler.removeCallbacks(testResetRunnable)
-            mainHandler.postDelayed(testResetRunnable, TEST_DURATION_MS)
-            updatePersistentNotification()
+            performAudioChannelsTtsTest()
             return START_STICKY
         }
 
@@ -133,6 +153,7 @@ class AudioRoutingService : Service() {
             log("Reset command: Clear communication device...")
             isTestMode = false
             stopWatchdog()
+            tts?.stop()
             audioManager.clearCommunicationDevice()
             notifyStatusUpdate()
             updatePersistentNotification()
@@ -157,59 +178,42 @@ class AudioRoutingService : Service() {
     }
 
     /**
-     * Diagnosztikai Ping Teszt:
-     * Halk hangjelzést ad ki a célként megadott Bluetooth kihangosító eszközön.
-     * Működik akkor is, ha az átirányítás aktív, és akkor is, ha nyugalmi (idle) állapotban van.
+     * SCO Teszt Text-To-Speech (TTS) felolvasással:
+     * 3-szor kimondja a híváscsatornán (STREAM_VOICE_CALL), majd 3-szor a médiacsatornán (STREAM_MUSIC).
      */
-    private fun performPingTest() {
-        val targetMac = prefs.targetSpeakerMac
-        val targetName = prefs.targetSpeakerName ?: prefs.targetSpeakerMac ?: getString(R.string.not_selected)
+    private fun performAudioChannelsTtsTest() {
+        log(getString(R.string.test_mode_tts_start))
+        isTestMode = true
+        enforceTargetAudioRoute()
+        startWatchdog()
 
-        if (targetMac.isNullOrEmpty()) {
-            log(getString(R.string.ping_test_failed, targetName))
-            return
-        }
+        val callText = getString(R.string.test_call_channel_tts)
+        val mediaText = getString(R.string.test_media_channel_tts)
 
-        log(getString(R.string.ping_test_started, targetName))
-
-        mainHandler.post {
-            val availableDevices = audioManager.availableCommunicationDevices
-            val targetDevice = availableDevices.firstOrNull { device ->
-                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
-                        device.address.equals(targetMac, ignoreCase = true)
-            } ?: availableDevices.firstOrNull { device ->
-                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-            }
-
-            val wasRoutingActive = isCallActive || isTestMode
-
-            if (targetDevice != null) {
-                if (!wasRoutingActive) {
-                    audioManager.setCommunicationDevice(targetDevice)
+        mainHandler.postDelayed({
+            if (tts != null) {
+                // 1. Híváscsatorna tesztelése (3x)
+                val callBundle = Bundle().apply {
+                    putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+                }
+                for (i in 1..3) {
+                    tts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "test_call_$i")
                 }
 
-                mainHandler.postDelayed({
-                    try {
-                        val toneGen = ToneGenerator(AudioManager.STREAM_VOICE_CALL, 35)
-                        toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 250)
-                        mainHandler.postDelayed({
-                            toneGen.release()
-                            if (!wasRoutingActive) {
-                                audioManager.clearCommunicationDevice()
-                            }
-                            log(getString(R.string.ping_test_success))
-                        }, 400)
-                    } catch (e: Exception) {
-                        log("Ping test error: ${e.message}")
-                        if (!wasRoutingActive) {
-                            audioManager.clearCommunicationDevice()
-                        }
-                    }
-                }, 300)
-            } else {
-                log(getString(R.string.ping_test_failed, targetName))
+                // 2. Médiacsatorna tesztelése (3x)
+                val mediaBundle = Bundle().apply {
+                    putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+                }
+                for (i in 1..3) {
+                    tts?.speak(mediaText, TextToSpeech.QUEUE_ADD, mediaBundle, "test_media_$i")
+                }
             }
-        }
+
+            // Biztonsági időzítő (15 mp), ha a TTS listener nem futna le
+            mainHandler.removeCallbacks(testTimeoutRunnable)
+            mainHandler.postDelayed(testTimeoutRunnable, 15000L)
+            updatePersistentNotification()
+        }, 500)
     }
 
     private fun handleCallStarted() {
@@ -227,7 +231,8 @@ class AudioRoutingService : Service() {
             isCallActive = false
             isTestMode = false
             stopWatchdog()
-            mainHandler.removeCallbacks(testResetRunnable)
+            mainHandler.removeCallbacks(testTimeoutRunnable)
+            tts?.stop()
             log("Call ended. Clearing communication device...")
             audioManager.clearCommunicationDevice()
             updatePersistentNotification()
@@ -373,7 +378,9 @@ class AudioRoutingService : Service() {
         super.onDestroy()
         isRunning = false
         stopWatchdog()
-        mainHandler.removeCallbacks(testResetRunnable)
+        mainHandler.removeCallbacks(testTimeoutRunnable)
+        tts?.stop()
+        tts?.shutdown()
         audioManager.removeOnCommunicationDeviceChangedListener(deviceChangedListener)
         telephonyManager.unregisterTelephonyCallback(telephonyCallback)
         audioManager.clearCommunicationDevice()
@@ -388,11 +395,9 @@ class AudioRoutingService : Service() {
         const val NOTIFICATION_ID = 2001
         const val ACTION_STOP_SERVICE = "com.antigravity.btaudiorouter.ACTION_STOP"
         const val ACTION_TEST_ROUTE = "com.antigravity.btaudiorouter.ACTION_TEST"
-        const val ACTION_PING_TARGET = "com.antigravity.btaudiorouter.ACTION_PING_TARGET"
         const val ACTION_RESET_ROUTE = "com.antigravity.btaudiorouter.ACTION_RESET"
         const val ACTION_REFRESH_NOTIFICATION = "com.antigravity.btaudiorouter.ACTION_REFRESH_NOTIF"
         const val WATCHDOG_INTERVAL_MS = 500L
-        const val TEST_DURATION_MS = 5000L
 
         var isRunning = false
             private set

@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.telephony.TelephonyManager
 import android.text.method.ScrollingMovementMethod
 import android.view.View
+import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -48,7 +49,6 @@ class MainActivity : Activity() {
     private lateinit var switchService: Switch
     private lateinit var tvCallState: TextView
     private lateinit var tvActiveDevice: TextView
-    private lateinit var btnPingTarget: Button
     private lateinit var btnTestRoute: Button
     private lateinit var btnResetRoute: Button
     private lateinit var tvLog: TextView
@@ -76,8 +76,39 @@ class MainActivity : Activity() {
         val name: String,
         val mac: String,
         val statusText: String
-    ) {
-        override fun toString(): String = if (mac.isEmpty()) name else "$name ($mac)\n   └ $statusText"
+    )
+
+    private inner class BtDeviceAdapter(
+        context: Context,
+        items: List<BtDeviceItem>
+    ) : ArrayAdapter<BtDeviceItem>(context, R.layout.spinner_device_item, items) {
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            return createCustomView(position, convertView, parent)
+        }
+
+        override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+            return createCustomView(position, convertView, parent)
+        }
+
+        private fun createCustomView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view = convertView ?: layoutInflater.inflate(R.layout.spinner_device_item, parent, false)
+            val item = getItem(position)
+            val tvName = view.findViewById<TextView>(R.id.tvDeviceName)
+            val tvStatus = view.findViewById<TextView>(R.id.tvDeviceStatus)
+
+            if (item != null) {
+                if (item.mac.isEmpty()) {
+                    tvName.text = item.name
+                    tvStatus.visibility = View.GONE
+                } else {
+                    tvName.text = "${item.name} (${item.mac})"
+                    tvStatus.text = "└ ${item.statusText}"
+                    tvStatus.visibility = View.VISIBLE
+                }
+            }
+            return view
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,7 +169,6 @@ class MainActivity : Activity() {
         switchService = findViewById(R.id.switchService)
         tvCallState = findViewById(R.id.tvCallState)
         tvActiveDevice = findViewById(R.id.tvActiveDevice)
-        btnPingTarget = findViewById(R.id.btnPingTarget)
         btnTestRoute = findViewById(R.id.btnTestRoute)
         btnResetRoute = findViewById(R.id.btnResetRoute)
         tvLog = findViewById(R.id.tvLog)
@@ -170,17 +200,6 @@ class MainActivity : Activity() {
                 }
             }
             updateStatus()
-        }
-
-        btnPingTarget.setOnClickListener {
-            val intent = Intent(this, AudioRoutingService::class.java).apply {
-                action = AudioRoutingService.ACTION_PING_TARGET
-            }
-            if (AudioRoutingService.isRunning) {
-                startService(intent)
-            } else {
-                startAudioService(intent)
-            }
         }
 
         btnTestRoute.setOnClickListener {
@@ -310,13 +329,11 @@ class MainActivity : Activity() {
             for (dev in bonded) {
                 val mac = dev.address
 
-                // Csatlakozás ellenőrzése
                 val isCallConnected = connectedHeadset.any { it.address.equals(mac, ignoreCase = true) } ||
                         commDevices.any { it.address.equals(mac, ignoreCase = true) }
                 val isMediaConnected = connectedA2dp.any { it.address.equals(mac, ignoreCase = true) }
                 val isConnected = isCallConnected || isMediaConnected
 
-                // KIZÁRÓLAG A CSATLAKOZTATOTT ESZKÖZÖKET ENGEDJÜK KIVÁLASZTANI
                 if (isConnected) {
                     val displayName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !dev.alias.isNullOrEmpty()) {
                         dev.alias!!
@@ -334,7 +351,7 @@ class MainActivity : Activity() {
             pairedDevices.add(BtDeviceItem(getString(R.string.no_connected_devices), "", ""))
         }
 
-        val adapterList = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, pairedDevices)
+        val adapterList = BtDeviceAdapter(this, pairedDevices)
         spinnerSourceAA.adapter = adapterList
         spinnerTargetSpeaker.adapter = adapterList
 

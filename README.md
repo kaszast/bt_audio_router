@@ -21,12 +21,9 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 ## ✨ Főbb Funkciók
 
 - **Automatikus Hívás-Átirányítás**: Bejövő és kimenő hívások automatikus kezelése.
-- **Cél Kihangosító Ping Teszt (Új Diagnosztika)**: Egyetlen gombnyomással egy halk hangjelzést (ping) játszik le a cél kihangosítón mind aktív átirányítás esetén, mind nyugalmi állapotban.
+- **Audio Csatornák Felolvasási Tesztje (3x Speech Test)**: A teszt gomb megnyomásakor a rendszer Text-to-Speech felolvasást végez 3-szor a híváscsatornán (`STREAM_VOICE_CALL`) és 3-szor a médiacsatornán (`STREAM_MUSIC`) a telefon rendszernyelvén ("Híváscsatorna tesztelése" / "Testing call channel").
+- **Kétsoros Eszközlista & Képességek**: Kétsoros egyedi Spinner elrendezés (`spinner_device_item.xml`), ahol a második sorban kristálytisztán láthatóak az eszköz nyújtotta szolgáltatások (`HFP`, `A2DP`, `HID`) és a csatlakozási állapot.
 - **Kizárólag Csatlakoztatott Eszközök Választhatók**: A választólistákban **kizárólag az éppen csatlakoztatott** Bluetooth eszközök jelennek meg, megelőzve az offline eszközök téves kiválasztását.
-- **Részletes Szolgáltatás- és Profilkijelzés**:
-  - Megjeleníti az eszközök által nyújtott szolgáltatásokat: `Telefonhívás (HFP)`, `Média Audio (A2DP)`, `Billentyűzet / Input (HID)`.
-  - Élőben kijelzi a csatlakozási állapotot: `Csatlakoztatva: Hívás + Média`, `Csatlakoztatva: Hívás`, `Csatlakoztatva: Média`.
-  - Kezeli a felhasználói egyéni beceneveket (alias) és a gyári eszközneveket.
 - **Biztonságos Audio Útválasztás (Nincs Elnémulás)**: Az audio-útvonal kényszerítése kizárólag aktív hívás vagy manuális teszt során történik. Nyugalmi (IDLE) állapotban a telefon és a csatlakoztatott eszközök normálisan működnek.
 - **Többnyelvű Támogatás (Multilingual)**: Automatikus magyar nyelv, ha a telefon nyelve magyar, egyébként alapértelmezett angol nyelv.
 - **Eszközválasztás**: A telefonhoz csatlakoztatott Bluetooth eszközök közül külön kiválasztható az Android Auto forrás és a cél kihangosító.
@@ -43,10 +40,11 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 
 | Állomány | Szerep / Feladat |
 | :--- | :--- |
-| **`AudioRoutingService.kt`** | A fő előtér-szolgáltatás (`connectedDevice` FGS típus). Kezeli a hívásállapotokat (`TelephonyCallback`), az audio útvonalat (`AudioManager`), a Ping diagnosztikát (`ToneGenerator`), az állandó értesítést, és futtatja az Anti-Revert Watchdog időzítőt. |
-| **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli a csatlakoztatott Bluetooth eszközök szűrését, a profil-csatlakozási lekérdezéseket (`HEADSET`, `A2DP`, `HID`), a diagnosztikai gombokat és az automatikusan görgető naplót. |
+| **`AudioRoutingService.kt`** | A fő előtér-szolgáltatás (`connectedDevice` FGS típus). Kezeli a hívásállapotokat (`TelephonyCallback`), az audio útvonalat (`AudioManager`), a Text-to-Speech (TTS) tesztet, az állandó értesítést, és futtatja az Anti-Revert Watchdog időzítőt. |
+| **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli a csatlakoztatott Bluetooth eszközök szűrését, a kétsoros `BtDeviceAdapter` Spinner nézetet, a profil-csatlakozási lekérdezéseket (`HEADSET`, `A2DP`, `HID`), az engedélykéréseket és az automatikusan görgető naplót. |
 | **`BootReceiver.kt`** | `BroadcastReceiver`, amely a telefon bekapcsolása után automatikusan elindítja a szolgáltatást. |
 | **`DevicePreferenceManager.kt`** | `SharedPreferences` wrapper a kiválasztott nevek, MAC címek és állapotok tartós tárolásához. |
+| **`res/layout/spinner_device_item.xml`** | Kétsoros egyedi Spinner elrendezés az eszköznevek, szolgáltatások és csatlakozási állapotok teljes megjelenítéséhez. |
 | **`res/values/strings.xml`** | Alapértelmezett Angol nyelvű szövegerőforrások. |
 | **`res/values-hu/strings.xml`** | Magyar nyelvű fordítások (magyar rendszernyelv esetén). |
 
@@ -77,7 +75,7 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
    - **Forrás (Android Auto)**: a fejegységedet.
    - **Cél (Bluetooth kihangosító)**: a hívásokhoz használni kívánt kihangosítót.
 6. Kapcsold be a **Hívás-átirányító háttérszolgáltatás** kapcsolót.
-7. A diagnosztikához kattints a **"Cél Kihangosító Ping Teszt"** gombra (halk csipogást ad ki a kihangosítón).
+7. A csatornák teszteléséhez kattints az **"Audio Csatornák Tesztelése"** gombra (3-szor felolvassa a csatornák nevét a hívási és a média csatornán is).
 
 ---
 ---
@@ -105,7 +103,8 @@ When connected to Android Auto, the Android system automatically routes call aud
 ## ✨ Features
 
 - **Automatic Call Routing**: Hands-free routing for incoming and outgoing calls.
-- **Sound Ping Diagnostic Test (New Feature)**: Plays a soft audio ping on the target Bluetooth speaker with a single tap, whether routing is currently active or idle.
+- **3x Text-to-Speech Channel Test**: Diagnostic button uses Text-to-Speech (TTS) to speak 3 times on the call channel (`STREAM_VOICE_CALL`) and 3 times on the media channel (`STREAM_MUSIC`) in the phone's native language ("Testing call channel" / "Híváscsatorna tesztelése").
+- **Two-Line Device Spinner View**: Custom layout (`spinner_device_item.xml`) ensuring device capabilities (`HFP`, `A2DP`, `HID`) and connection status are 100% visible on line 2.
 - **Connected-Only Device Filter**: The selection dropdowns **only list actively connected** Bluetooth devices, preventing selection of offline/unconnected paired devices.
 - **Detailed Service Capability & Profile Badges**:
   - Displays device supported services: `Phone Calls (HFP)`, `Media Audio (A2DP)`, `Keyboard / Input (HID)`.
