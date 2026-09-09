@@ -261,9 +261,9 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     }
 
     @Suppress("DEPRECATION")
-    private fun logDetailedDiagnostics(tag: String) {
+    private fun logDetailedDiagnostics() {
         val sb = StringBuilder()
-        sb.append("\n=== DIAGNOSTICS [$tag] ===\n")
+        sb.append("\n=== DIAGNOSTICS [ROUTING_ATTEMPT] ===\n")
         sb.append("OS: Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) | ${Build.MANUFACTURER} ${Build.MODEL}\n")
         sb.append("Audio Mode: ${getAudioModeName(audioManager.mode)} | BT SCO: ${audioManager.isBluetoothScoOn} | Speaker: ${audioManager.isSpeakerphoneOn}\n")
         sb.append("Call State: ${getCallStateName(telephonyManager.callState)}\n")
@@ -298,7 +298,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
             return false
         }
 
-        logDetailedDiagnostics("ROUTING_ATTEMPT")
+        logDetailedDiagnostics()
 
         val targetMac = prefs.targetSpeakerMac
         val targetName = prefs.targetSpeakerName
@@ -312,19 +312,20 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
 
         val availableDevices = audioManager.availableCommunicationDevices
 
-        // 1. Match exact MAC address
+        // 1. Kifejezetten olyan Bluetooth SCO eszközt keresünk, aminek a MAC címe VAGY a neve egyezik a céllal.
         var targetDevice = availableDevices.firstOrNull { device ->
-            !targetMac.isNullOrEmpty() && device.address.equals(targetMac, ignoreCase = true)
+            device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
+            (!targetMac.isNullOrEmpty() && device.address.equals(targetMac, ignoreCase = true))
         }
 
-        // 2. Match Device Name (if MAC address is masked/blank)
         if (targetDevice == null && !targetName.isNullOrEmpty()) {
             targetDevice = availableDevices.firstOrNull { device ->
+                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
                 device.productName.toString().contains(targetName, ignoreCase = true)
             }
         }
 
-        // 3. Fallback to SCO device THAT IS NOT THE SOURCE ANDROID AUTO DEVICE
+        // 2. Ha nem találtuk a célt, SZIGORÚAN KIZÁRJUK az Android Auto forrást a fallbackből.
         if (targetDevice == null) {
             targetDevice = availableDevices.firstOrNull { device ->
                 device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
