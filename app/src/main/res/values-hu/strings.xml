@@ -15,7 +15,8 @@
     <string name="section2_title">2. Szolgáltatás állapota &amp; Csatornák</string>
     <string name="service_switch_label">Hívás-átirányító háttérszolgáltatás</string>
     <string name="service_call_switch_label">Hívások átirányítása (Híváscsatorna)</string>
-    <string name="service_media_switch_label">Média hang átirányítása (Médiacsatorna)</string>
+    <string name="service_media_switch_label">Médiacsatorna a tesztben (a rendszer-A2DP nem irányítható)</string>
+    <string name="log_media_routing_limited">MEGJEGYZÉS: A rendszer média (A2DP) hangját harmadik fél alkalmazása nem tudja átirányítani — az Androidnak nincs publikus API-ja az aktív A2DP eszköz váltására. Ez a kapcsoló csak a teszt média-részére hat. Zenéhez használd a rendszer Bluetooth kimenetválasztóját.</string>
 
     <string name="call_state_format">Hívás állapota: %1$s</string>
     <string name="active_device_format">Aktív audio eszköz: %1$s</string>

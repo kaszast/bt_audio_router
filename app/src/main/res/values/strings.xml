@@ -15,7 +15,8 @@
     <string name="section2_title">2. Service Status &amp; Channels</string>
     <string name="service_switch_label">Enable Call Routing Service</string>
     <string name="service_call_switch_label">Route Phone Calls (Call Channel)</string>
-    <string name="service_media_switch_label">Route Media Audio (Media Channel)</string>
+    <string name="service_media_switch_label">Media channel in test (system A2DP is not routable)</string>
+    <string name="log_media_routing_limited">NOTE: System media (A2DP) audio cannot be redirected by a third-party app — Android has no public API to switch the active A2DP device. This switch only affects the media part of the test. For music, use the system Bluetooth output selector.</string>
 
     <string name="call_state_format">Call State: %1$s</string>
     <string name="active_device_format">Active Audio Device: %1$s</string>

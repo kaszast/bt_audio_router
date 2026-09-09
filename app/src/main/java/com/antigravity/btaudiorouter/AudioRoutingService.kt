@@ -40,6 +40,12 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     private var isTestMode = false
     private var isWatchdogRunning = false
 
+    /** True, ha az audio módot MI állítottuk (csak tesztmódban) — csak ilyenkor állítjuk vissza. */
+    private var didSetAudioMode = false
+
+    /** Ismétlődő "cél nem található" naplóüzenetek elnyomására (a watchdog 500 ms-onként fut). */
+    private var hasLoggedTargetMissing = false
+
     private val watchdogRunnable = object : Runnable {
         override fun run() {
             if (isCallActive || isTestMode) {
@@ -182,6 +188,15 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     private fun performAudioChannelsTtsTest() {
         log(getString(R.string.test_mode_tts_start))
         isTestMode = true
+        hasLoggedTargetMissing = false
+
+        // Éles hívásnál a telefónia stack adja az audio módot; teszt közben nekünk kell
+        // MODE_IN_COMMUNICATION-be tenni, hogy a kommunikációs eszköz kiválasztása érvényesüljön.
+        if (prefs.isCallRoutingEnabled) {
+            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+            didSetAudioMode = true
+        }
+
         enforceTargetAudioRoute()
         startWatchdog()
 
@@ -216,6 +231,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     private fun handleCallStarted() {
         if (!isCallActive) {
             isCallActive = true
+            hasLoggedTargetMissing = false
             log("Call started! Enforcing target handsfree and starting Watchdog...")
             enforceTargetAudioRoute()
             startWatchdog()
@@ -296,59 +312,77 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     }
 
     /**
-     * Enforces the target Bluetooth SCO communication device.
+     * Megkeresi a cél kommunikációs (SCO) eszközt.
+     *
+     * A forrás (Android Auto) eszközt MAC alapján zárjuk ki. Ha van mentett cél MAC,
+     * KIZÁRÓLAG az alapján illesztünk — a névalapú illesztés téves eszközre találhat.
      */
-    @Suppress("DEPRECATION")
+    private fun findTargetCommunicationDevice(targetMac: String, targetName: String): AudioDeviceInfo? {
+        val sourceMac = prefs.sourceAaMac ?: ""
+
+        val candidates = audioManager.availableCommunicationDevices.filter { device ->
+            device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
+                    (sourceMac.isEmpty() || !device.address.equals(sourceMac, ignoreCase = true))
+        }
+
+        if (targetMac.isNotEmpty()) {
+            return candidates.firstOrNull { it.address.equals(targetMac, ignoreCase = true) }
+        }
+
+        return candidates.firstOrNull { it.productName.toString().equals(targetName, ignoreCase = true) }
+    }
+
+    /**
+     * A cél Bluetooth SCO eszköz kikényszerítése kommunikációs eszközként.
+     *
+     * Az audio módot éles hívásnál NEM állítjuk: azt a telefónia stack kezeli, és a
+     * MODE_IN_CALL amúgy is privilegizált mód. Tesztmódban a hívó állítja MODE_IN_COMMUNICATION-re.
+     */
     fun enforceTargetAudioRoute(): Boolean {
         if (!isCallActive && !isTestMode) {
             return false
         }
 
-        if (!prefs.isCallRoutingEnabled && !isTestMode) {
+        if (!prefs.isCallRoutingEnabled) {
             return false
+        }
+
+        val targetMac = prefs.targetSpeakerMac ?: ""
+        val targetName = prefs.targetSpeakerName ?: ""
+
+        if (targetMac.isEmpty() && targetName.isEmpty()) {
+            if (!hasLoggedTargetMissing) {
+                hasLoggedTargetMissing = true
+                log("ERROR: No target speaker configured!")
+            }
+            return false
+        }
+
+        val targetDevice = findTargetCommunicationDevice(targetMac, targetName)
+
+        // Ha nem találjuk a célt, SZIGORÚAN megtagadjuk az átirányítást (soha nem esünk vissza az AA forrásra).
+        if (targetDevice == null) {
+            if (!hasLoggedTargetMissing) {
+                hasLoggedTargetMissing = true
+                logDetailedDiagnostics()
+                log("WARNING: Target BT speaker [$targetName / $targetMac] NOT found in available SCO devices! AA source strictly excluded.")
+            }
+            return false
+        }
+
+        hasLoggedTargetMissing = false
+
+        // A watchdog 500 ms-onként fut: ha már a célon vagyunk, ne csináljunk és ne naplózzunk semmit.
+        val currentDevice = audioManager.communicationDevice
+        if (currentDevice != null && currentDevice.id == targetDevice.id) {
+            return true
         }
 
         logDetailedDiagnostics()
 
-        val targetMac = prefs.targetSpeakerMac ?: ""
-        val targetName = prefs.targetSpeakerName ?: ""
-        val sourceName = prefs.sourceAaName ?: ""
-
-        if (targetMac.isEmpty() && targetName.isEmpty()) {
-            log("ERROR: No target speaker configured!")
-            return false
-        }
-
-        val availableDevices = audioManager.availableCommunicationDevices
-
-        val cleanTargetName = targetName.replace(Regex(".*?[–-]\\s*"), "").trim()
-        val cleanSourceName = sourceName.replace(Regex(".*?[–-]\\s*"), "").trim()
-
-        // 1. Kifejezetten olyan Bluetooth SCO eszközt keresünk, aminek a MAC címe VAGY a tisztított neve egyezik a céllal.
-        var targetDevice = availableDevices.firstOrNull { device ->
-            device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
-                    ((targetMac.isNotEmpty() && device.address.equals(targetMac, ignoreCase = true)) ||
-                            (cleanTargetName.isNotEmpty() && (device.productName.toString().contains(cleanTargetName, ignoreCase = true) || cleanTargetName.contains(device.productName.toString(), ignoreCase = true))))
-        }
-
-        // 2. HA NEM TALÁLTUK A CÉLT, SZIGORÚAN MEGTAGADJUK AZ ÁTIRÁNYÍTÁST! (SOHA NEM ADJUK ÁT AZ AA FORRÁSNAK!)
-        if (targetDevice == null) {
-            log("WARNING: Target BT speaker [$targetName / $targetMac] NOT found in available SCO devices! AA source [$sourceName] strictly excluded.")
-            return false
-        }
-
-        if (cleanSourceName.isNotEmpty() && targetDevice.productName.toString().contains(cleanSourceName, ignoreCase = true)) {
-            log("WARNING: Target device matched Source AA device [$sourceName]! Aborting route to prevent loop.")
-            return false
-        }
-
         try {
-            audioManager.mode = AudioManager.MODE_IN_CALL
             val success = audioManager.setCommunicationDevice(targetDevice)
-            audioManager.isBluetoothScoOn = true
-            audioManager.startBluetoothSco()
-
-            log("ROUTING SUCCESS -> Set to ${targetDevice.productName} [${targetDevice.address}] (id=${targetDevice.id}), setCommDev Result: $success")
+            log("ROUTING -> ${targetDevice.productName} [${targetDevice.address}] (id=${targetDevice.id}), setCommunicationDevice: $success")
             notifyStatusUpdate()
             return success
         } catch (e: Exception) {
@@ -357,16 +391,18 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun clearAudioRoute() {
         try {
-            audioManager.isBluetoothScoOn = false
-            audioManager.stopBluetoothSco()
             audioManager.clearCommunicationDevice()
-            audioManager.mode = AudioManager.MODE_NORMAL
+            // Az audio módhoz csak akkor nyúlunk, ha mi magunk állítottuk (tesztmód).
+            if (didSetAudioMode) {
+                audioManager.mode = AudioManager.MODE_NORMAL
+                didSetAudioMode = false
+            }
         } catch (e: Exception) {
             log("Error clearing audio route: ${e.message}")
         }
+        hasLoggedTargetMissing = false
     }
 
     private fun startWatchdog() {

@@ -21,7 +21,7 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 ## ✨ Főbb Funkciók
 
 - **Automatikus Hívás-Átirányítás**: Bejövő és kimenő hívások automatikus kezelése.
-- **Külön Csomópont-Kapcsolók (Call & Media Routing)**: Külön kapcsolókkal szabályozható a Hívások csatorna és a Média hangcsatorna átirányítása.
+- **Külön Csomópont-Kapcsolók (Call & Media)**: A Hívás-kapcsoló szabályozza a híváshang átirányítását a cél kihangosítóra. A Média-kapcsoló **csak a beépített teszt média-részére hat**: a rendszer média (A2DP) hangjának átirányítása harmadik fél alkalmazásból nem lehetséges, mert az aktív A2DP eszköz váltásához nincs publikus Android API.
 - **Szigorú Szűrés az Android Auto Ellen**: Ha a céleszköz nem található a hívási modulok között, az alkalmazás **szigorúan megtagadja** a téves fallback átirányítást az Android Auto fejegységre.
 - **Audio Csatornák Felolvasási Tesztje (TTS Speech Test)**: A teszt gomb megnyomásakor a rendszer Text-to-Speech felolvasást végez a híváscsatornán (`STREAM_VOICE_CALL`) és a médiacsatornán (`STREAM_MUSIC`) a telefon rendszernyelvén ("Híváscsatorna tesztelése" / "Testing call channel"). Kikapcsolt háttérszolgáltatás esetén is lefut közvetlenül!
 - **Részletes Diagnosztikai Naplózás & Kijelölhető Teljes Képernyős Mód**:
@@ -109,7 +109,7 @@ When connected to Android Auto, the Android system automatically routes call aud
 ## ✨ Features
 
 - **Automatic Call Routing**: Hands-free routing for incoming and outgoing calls.
-- **Separate Channel Toggles**: Individual switches to enable/disable Phone Call Routing and Media Audio Routing.
+- **Separate Channel Toggles**: The Call switch controls routing of call audio to the target hands-free device. The Media switch **only affects the media part of the built-in test**: system media (A2DP) audio cannot be redirected by a third-party app, as Android exposes no public API for switching the active A2DP device.
 - **Strict Android Auto Exclusion**: Prevents fallback routing loops back to the Android Auto head unit if the target device is unavailable.
 - **Text-to-Speech Channel Test**: Diagnostic button uses Text-to-Speech (TTS) to speak on the call channel (`STREAM_VOICE_CALL`) and media channel (`STREAM_MUSIC`) in the phone's native language. Works even when background service is off!
 - **Detailed Diagnostic Logging & Fullscreen Selectable Log Modal**:

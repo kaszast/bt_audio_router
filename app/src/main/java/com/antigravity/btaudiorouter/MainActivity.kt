@@ -235,6 +235,9 @@ class MainActivity : Activity() {
         switchMediaRouting.setOnCheckedChangeListener { _, isChecked ->
             prefs.isMediaRoutingEnabled = isChecked
             appendLog("Media Routing: $isChecked")
+            if (isChecked) {
+                appendLog(getString(R.string.log_media_routing_limited))
+            }
         }
 
         btnTestRoute.setOnClickListener {
