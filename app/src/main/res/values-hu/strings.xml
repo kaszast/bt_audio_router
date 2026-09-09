@@ -7,10 +7,10 @@
     <string name="perm_desc">Bluetooth, Telefonállapot és Értesítési engedély szükséges a háttérbeli hívásátirányításhoz.</string>
     <string name="grant_permissions_label">Engedélyek megadása</string>
 
-    <string name="section1_title">1. Eszközök beállítása</string>
+    <string name="section1_title">1. Csatlakoztatott Eszközök Beállítása</string>
     <string name="android_auto_device_label">Android Auto eszköz (Forrás):</string>
     <string name="target_speaker_label">Bluetooth kihangosító (Cél):</string>
-    <string name="refresh_devices_label">Eszközök &amp; Állapotok újratöltése</string>
+    <string name="refresh_devices_label">Csatlakoztatott Eszközök Újratöltése</string>
 
     <string name="section2_title">2. Szolgáltatás állapota</string>
     <string name="service_switch_label">Hívás-átirányító háttérszolgáltatás</string>
@@ -30,10 +30,16 @@
     <string name="dev_type_headset">Vezetékes headset</string>
     <string name="dev_type_other">Egyéb (%1$d)</string>
 
-    <string name="dev_status_both">[Csatlakoztatva: Hívás + Média]</string>
-    <string name="dev_status_call">[Csatlakoztatva: Hívás]</string>
-    <string name="dev_status_media">[Csatlakoztatva: Média]</string>
-    <string name="dev_status_none">[Nincs csatlakoztatva]</string>
+    <string name="cap_phone_call">Telefonhívás (HFP)</string>
+    <string name="cap_media_audio">Média Audio (A2DP)</string>
+    <string name="cap_keyboard_input">Billentyűzet / Input (HID)</string>
+    <string name="cap_general_bt">Bluetooth Kiegészítő</string>
+    <string name="status_connected_both">Csatlakoztatva: Hívás + Média</string>
+    <string name="status_connected_call">Csatlakoztatva: Hívás</string>
+    <string name="status_connected_media">Csatlakoztatva: Média</string>
+    <string name="status_connected_active">Csatlakoztatva</string>
+    <string name="no_connected_devices">[Nincs csatlakoztatott Bluetooth eszköz]</string>
+
     <string name="dev_active_idle_format">Rendszer alapértelmezett (Híváskor vált át erre: %1$s)</string>
 
     <string name="test_mode_active">MANUÁLIS TESZT: Audio kényszerítése erre: %1$s (5 mp)...</string>

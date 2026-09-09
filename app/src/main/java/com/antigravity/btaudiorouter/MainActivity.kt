@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
@@ -54,7 +55,6 @@ class MainActivity : Activity() {
     private val pairedDevices = mutableListOf<BtDeviceItem>()
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
-    // Bluetooth profiltárolók a csatlakozási állapotok pontos lekéréséhez
     private var headsetProxy: BluetoothProfile? = null
     private var a2dpProxy: BluetoothProfile? = null
 
@@ -76,7 +76,7 @@ class MainActivity : Activity() {
         val mac: String,
         val statusText: String
     ) {
-        override fun toString(): String = "$name ($mac)\n   └ $statusText"
+        override fun toString(): String = if (mac.isEmpty()) name else "$name ($mac)\n   └ $statusText"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -141,9 +141,7 @@ class MainActivity : Activity() {
         btnResetRoute = findViewById(R.id.btnResetRoute)
         tvLog = findViewById(R.id.tvLog)
 
-        // Eseménynapló görgethetővé tétele
         tvLog.movementMethod = ScrollingMovementMethod()
-
         switchService.isChecked = AudioRoutingService.isRunning
     }
 
@@ -155,7 +153,7 @@ class MainActivity : Activity() {
         btnRefreshDevices.setOnClickListener {
             loadPairedDevices()
             updateStatus()
-            appendLog("Devices & connection profiles refreshed.")
+            appendLog("Connected Bluetooth devices refreshed.")
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->
@@ -239,6 +237,50 @@ class MainActivity : Activity() {
     }
 
     @SuppressLint("MissingPermission")
+    private fun getDeviceCapabilitiesAndStatus(
+        dev: BluetoothDevice,
+        isCallConnected: Boolean,
+        isMediaConnected: Boolean
+    ): String {
+        val btClass = dev.bluetoothClass
+        val capabilities = mutableListOf<String>()
+
+        val hasCallCap = btClass?.hasService(BluetoothClass.Service.TELEPHONY) == true ||
+                btClass?.deviceClass == BluetoothClass.Device.AUDIO_VIDEO_HANDSFREE ||
+                btClass?.deviceClass == BluetoothClass.Device.AUDIO_VIDEO_WEARABLE_HEADSET ||
+                btClass?.deviceClass == BluetoothClass.Device.AUDIO_VIDEO_CAR_AUDIO ||
+                isCallConnected
+
+        val hasMediaCap = btClass?.hasService(BluetoothClass.Service.AUDIO) == true ||
+                btClass?.deviceClass == BluetoothClass.Device.AUDIO_VIDEO_HEADPHONES ||
+                btClass?.deviceClass == BluetoothClass.Device.AUDIO_VIDEO_LOUDSPEAKER ||
+                btClass?.deviceClass == BluetoothClass.Device.AUDIO_VIDEO_CAR_AUDIO ||
+                isMediaConnected
+
+        val hasHidCap = btClass?.hasService(BluetoothClass.Service.RENDER) == true ||
+                btClass?.majorDeviceClass == BluetoothClass.Device.Major.PERIPHERAL
+
+        if (hasCallCap) capabilities.add(getString(R.string.cap_phone_call))
+        if (hasMediaCap) capabilities.add(getString(R.string.cap_media_audio))
+        if (hasHidCap) capabilities.add(getString(R.string.cap_keyboard_input))
+
+        if (capabilities.isEmpty()) {
+            capabilities.add(getString(R.string.cap_general_bt))
+        }
+
+        val capText = capabilities.joinToString(" + ")
+
+        val connStatusText = when {
+            isCallConnected && isMediaConnected -> getString(R.string.status_connected_both)
+            isCallConnected -> getString(R.string.status_connected_call)
+            isMediaConnected -> getString(R.string.status_connected_media)
+            else -> getString(R.string.status_connected_active)
+        }
+
+        return "$capText | $connStatusText"
+    }
+
+    @SuppressLint("MissingPermission")
     private fun loadPairedDevices() {
         if (!hasBtConnectPermission()) return
 
@@ -253,29 +295,30 @@ class MainActivity : Activity() {
         val bonded: Set<BluetoothDevice>? = adapter?.bondedDevices
         if (bonded != null) {
             for (dev in bonded) {
-                // Felhasználói becenév (alias) vagy gyári név
-                val displayName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !dev.alias.isNullOrEmpty()) {
-                    dev.alias!!
-                } else {
-                    dev.name ?: getString(R.string.unknown_device)
-                }
-
                 val mac = dev.address
 
-                // Csatlakozási profilok ellenőrzése
+                // Csatlakozás ellenőrzése
                 val isCallConnected = connectedHeadset.any { it.address.equals(mac, ignoreCase = true) } ||
                         commDevices.any { it.address.equals(mac, ignoreCase = true) }
                 val isMediaConnected = connectedA2dp.any { it.address.equals(mac, ignoreCase = true) }
+                val isConnected = isCallConnected || isMediaConnected
 
-                val statusText = when {
-                    isCallConnected && isMediaConnected -> getString(R.string.dev_status_both)
-                    isCallConnected -> getString(R.string.dev_status_call)
-                    isMediaConnected -> getString(R.string.dev_status_media)
-                    else -> getString(R.string.dev_status_none)
+                // KIZÁRÓLAG A CSATLAKOZTATOTT ESZKÖZÖKET ENGEDJÜK KIVÁLASZTANI
+                if (isConnected) {
+                    val displayName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !dev.alias.isNullOrEmpty()) {
+                        dev.alias!!
+                    } else {
+                        dev.name ?: getString(R.string.unknown_device)
+                    }
+
+                    val infoText = getDeviceCapabilitiesAndStatus(dev, isCallConnected, isMediaConnected)
+                    pairedDevices.add(BtDeviceItem(displayName, mac, infoText))
                 }
-
-                pairedDevices.add(BtDeviceItem(displayName, mac, statusText))
             }
+        }
+
+        if (pairedDevices.isEmpty()) {
+            pairedDevices.add(BtDeviceItem(getString(R.string.no_connected_devices), "", ""))
         }
 
         val adapterList = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, pairedDevices)
@@ -285,17 +328,17 @@ class MainActivity : Activity() {
         val savedAaMac = prefs.sourceAaMac
         val savedTargetMac = prefs.targetSpeakerMac
 
-        val aaIdx = pairedDevices.indexOfFirst { it.mac.equals(savedAaMac, ignoreCase = true) }
+        val aaIdx = pairedDevices.indexOfFirst { it.mac.isNotEmpty() && it.mac.equals(savedAaMac, ignoreCase = true) }
         if (aaIdx >= 0) spinnerSourceAA.setSelection(aaIdx)
 
-        val targetIdx = pairedDevices.indexOfFirst { it.mac.equals(savedTargetMac, ignoreCase = true) }
+        val targetIdx = pairedDevices.indexOfFirst { it.mac.isNotEmpty() && it.mac.equals(savedTargetMac, ignoreCase = true) }
         if (targetIdx >= 0) spinnerTargetSpeaker.setSelection(targetIdx)
 
         spinnerSourceAA.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, pos: Int, p3: Long) {
                 if (pos in pairedDevices.indices) {
                     val item = pairedDevices[pos]
-                    if (prefs.sourceAaMac != item.mac) {
+                    if (item.mac.isNotEmpty() && prefs.sourceAaMac != item.mac) {
                         prefs.sourceAaMac = item.mac
                         prefs.sourceAaName = item.name
                         appendLog("Android Auto: ${item.name} [${item.mac}]")
@@ -310,7 +353,7 @@ class MainActivity : Activity() {
             override fun onItemSelected(p0: AdapterView<*>?, p1: View?, pos: Int, p3: Long) {
                 if (pos in pairedDevices.indices) {
                     val item = pairedDevices[pos]
-                    if (prefs.targetSpeakerMac != item.mac) {
+                    if (item.mac.isNotEmpty() && prefs.targetSpeakerMac != item.mac) {
                         prefs.targetSpeakerMac = item.mac
                         prefs.targetSpeakerName = item.name
                         appendLog("Target Handsfree: ${item.name} [${item.mac}]")
@@ -393,7 +436,6 @@ class MainActivity : Activity() {
         val logLine = "[$time] $message\n"
         tvLog.append(logLine)
 
-        // Automatikus görgetés az eseménynapló aljára
         tvLog.post {
             val scrollAmount = tvLog.layout?.getLineTop(tvLog.lineCount)?.minus(tvLog.height) ?: 0
             if (scrollAmount > 0) {

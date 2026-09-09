@@ -7,10 +7,10 @@
     <string name="perm_desc">Bluetooth, Phone State, and Notification permissions are required for background call routing.</string>
     <string name="grant_permissions_label">Grant Permissions</string>
 
-    <string name="section1_title">1. Device Configuration</string>
+    <string name="section1_title">1. Connected Device Configuration</string>
     <string name="android_auto_device_label">Android Auto Device (Source):</string>
     <string name="target_speaker_label">Bluetooth Handsfree (Target):</string>
-    <string name="refresh_devices_label">Refresh Devices &amp; Connection Status</string>
+    <string name="refresh_devices_label">Refresh Connected Devices</string>
 
     <string name="section2_title">2. Service Status</string>
     <string name="service_switch_label">Call Routing Background Service</string>
@@ -30,10 +30,16 @@
     <string name="dev_type_headset">Wired Headset</string>
     <string name="dev_type_other">Other (%1$d)</string>
 
-    <string name="dev_status_both">[Connected: Call + Media]</string>
-    <string name="dev_status_call">[Connected: Call]</string>
-    <string name="dev_status_media">[Connected: Media]</string>
-    <string name="dev_status_none">[Disconnected]</string>
+    <string name="cap_phone_call">Phone Calls (HFP)</string>
+    <string name="cap_media_audio">Media Audio (A2DP)</string>
+    <string name="cap_keyboard_input">Keyboard / Input (HID)</string>
+    <string name="cap_general_bt">Bluetooth Accessory</string>
+    <string name="status_connected_both">Connected: Call + Media</string>
+    <string name="status_connected_call">Connected: Call</string>
+    <string name="status_connected_media">Connected: Media</string>
+    <string name="status_connected_active">Connected</string>
+    <string name="no_connected_devices">[No connected Bluetooth devices]</string>
+
     <string name="dev_active_idle_format">System default (Will route to: %1$s during calls)</string>
 
     <string name="test_mode_active">MANUAL TEST: Forcing audio to %1$s for 5 seconds...</string>
