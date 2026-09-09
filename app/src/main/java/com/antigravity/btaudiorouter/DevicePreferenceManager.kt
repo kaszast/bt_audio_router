@@ -49,11 +49,27 @@ class DevicePreferenceManager(context: Context) {
         get() = prefs.getBoolean(KEY_SERVICE_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_SERVICE_ENABLED, value).apply()
 
+    /**
+     * Jelzi, hogy a telefonhívások átirányítása engedélyezve van-e.
+     */
+    var isCallRoutingEnabled: Boolean
+        get() = prefs.getBoolean(KEY_CALL_ROUTING_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_CALL_ROUTING_ENABLED, value).apply()
+
+    /**
+     * Jelzi, hogy a média hangok átirányítása engedélyezve van-e.
+     */
+    var isMediaRoutingEnabled: Boolean
+        get() = prefs.getBoolean(KEY_MEDIA_ROUTING_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_MEDIA_ROUTING_ENABLED, value).apply()
+
     companion object {
         private const val KEY_SOURCE_AA_MAC = "key_source_aa_mac"
         private const val KEY_SOURCE_AA_NAME = "key_source_aa_name"
         private const val KEY_TARGET_SPEAKER_MAC = "key_target_speaker_mac"
         private const val KEY_TARGET_SPEAKER_NAME = "key_target_speaker_name"
         private const val KEY_SERVICE_ENABLED = "key_service_enabled"
+        private const val KEY_CALL_ROUTING_ENABLED = "key_call_routing_enabled"
+        private const val KEY_MEDIA_ROUTING_ENABLED = "key_media_routing_enabled"
     }
 }

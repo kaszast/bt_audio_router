@@ -12,8 +12,11 @@
     <string name="target_speaker_label">Bluetooth Handsfree (Target):</string>
     <string name="refresh_devices_label">Refresh Connected Devices</string>
 
-    <string name="section2_title">2. Service Status</string>
-    <string name="service_switch_label">Call Routing Background Service</string>
+    <string name="section2_title">2. Service Status &amp; Channels</string>
+    <string name="service_switch_label">Enable Call Routing Service</string>
+    <string name="service_call_switch_label">Route Phone Calls (Call Channel)</string>
+    <string name="service_media_switch_label">Route Media Audio (Media Channel)</string>
+
     <string name="call_state_format">Call State: %1$s</string>
     <string name="active_device_format">Active Audio Device: %1$s</string>
 
@@ -47,7 +50,7 @@
 
     <string name="test_call_channel_tts">Testing call channel</string>
     <string name="test_media_channel_tts">Testing media channel</string>
-    <string name="test_mode_tts_start">SCO TEST: Speaking on call channel and media channel 3 times...</string>
+    <string name="test_mode_tts_start">SCO TEST: Speaking on call channel and media channel 1 time...</string>
     <string name="test_mode_tts_success">Audio channels test completed successfully.</string>
 
     <string name="btn_copy_log">Copy Log</string>

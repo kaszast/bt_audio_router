@@ -21,11 +21,13 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 ## ✨ Főbb Funkciók
 
 - **Automatikus Hívás-Átirányítás**: Bejövő és kimenő hívások automatikus kezelése.
+- **Külön Csomópont-Kapcsolók (Call & Media Routing)**: Külön kapcsolókkal szabályozható a Hívások csatorna és a Média hangcsatorna átirányítása.
+- **Szigorú Szűrés az Android Auto Ellen**: Ha a céleszköz nem található a hívási modulok között, az alkalmazás **szigorúan megtagadja** a téves fallback átirányítást az Android Auto fejegységre.
+- **Audio Csatornák Felolvasási Tesztje (TTS Speech Test)**: A teszt gomb megnyomásakor a rendszer Text-to-Speech felolvasást végez a híváscsatornán (`STREAM_VOICE_CALL`) és a médiacsatornán (`STREAM_MUSIC`) a telefon rendszernyelvén ("Híváscsatorna tesztelése" / "Testing call channel"). Kikapcsolt háttérszolgáltatás esetén is lefut közvetlenül!
 - **Részletes Diagnosztikai Naplózás & Kijelölhető Teljes Képernyős Mód**:
   - Részletes diagnosztikai információkat ír a naplóba (Android OS, hívási állapotok, Audio Mode, az összes csatlakoztatott kommunikációs és output eszköz ID-val, névvel és azonosítóval).
   - A **"Teljes képernyő"** gombra vagy a naplóra kattintva megnyílik a kijelölhető és kimásolható teljes képernyős naplóablak.
   - A **"Másolás"** gombbal a teljes napló 1-kattintással kimásolható a vágólapra.
-- **Audio Csatornák Felolvasási Tesztje (3x Speech Test)**: A teszt gomb megnyomásakor a rendszer Text-to-Speech felolvasást végez 3-szor a híváscsatornán (`STREAM_VOICE_CALL`) és 3-szor a médiacsatornán (`STREAM_MUSIC`) a telefon rendszernyelvén ("Híváscsatorna tesztelése" / "Testing call channel"). Kikapcsolt háttérszolgáltatás esetén is futtatható közvetlenül!
 - **Kétsoros Eszközlista & Képességek**: Kétsoros egyedi Spinner elrendezés (`spinner_device_item.xml`), ahol a második sorban kristálytisztán láthatóak az eszköz nyújtotta szolgáltatások (`HFP`, `A2DP`, `HID`) és a csatlakozási állapot.
 - **Kizárólag Csatlakoztatott Eszközök Választhatók**: A választólistákban **kizárólag az éppen csatlakoztatott** Bluetooth eszközök jelennek meg, megelőzve az offline eszközök téves kiválasztását.
 - **Biztonságos Audio Útválasztás (Nincs Elnémulás)**: Az audio-útvonal kényszerítése kizárólag aktív hívás vagy manuális teszt során történik. Nyugalmi (IDLE) állapotban a telefon és a csatlakoztatott eszközök normálisan működnek.
@@ -43,8 +45,8 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 
 | Állomány | Szerep / Feladat |
 | :--- | :--- |
-| **`AudioRoutingService.kt`** | A fő előtér-szolgáltatás (`connectedDevice` FGS típus). Kezeli a hívásállapotokat (`TelephonyCallback`), az audio útvonalat (`AudioManager`), a részletes diagnosztikai naplózást, a Text-to-Speech (TTS) tesztet, az állandó értesítést, és futtatja az Anti-Revert Watchdog időzítőt. |
-| **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli a csatlakoztatott Bluetooth eszközök szűrését, a kétsoros `BtDeviceAdapter` Spinner nézetet, a profil-csatlakozási lekérdezéseket (`HEADSET`, `A2DP`, `HID`), a kijelölhető teljes képernyős naplóablakot és a vágólapra másolást. |
+| **`AudioRoutingService.kt`** | A fő előtér-szolgáltatás (`connectedDevice` FGS típus). Kezeli a hívásállapotokat (`TelephonyCallback`), az audio útvonalat (`AudioManager`), a szigorú AA kizárást, a Text-to-Speech (TTS) tesztet, az állandó értesítést, és futtatja az Anti-Revert Watchdog időzítőt. |
+| **`MainActivity.kt`** | A felhasználói felület (UI). Kezeli a csatlakoztatott Bluetooth eszközök szűrését, a kétsoros `BtDeviceAdapter` Spinner nézetet, a profil-csatlakozási lekérdezéseket (`HEADSET`, `A2DP`, `HID`), a külön Hívás és Média kapcsolókat, a kijelölhető teljes képernyős naplóablakot és a vágólapra másolást. |
 | **`BootReceiver.kt`** | `BroadcastReceiver`, amely a telefon bekapcsolása után automatikusan elindítja a szolgáltatást. |
 | **`DevicePreferenceManager.kt`** | `SharedPreferences` wrapper a kiválasztott nevek, MAC címek és állapotok tartós tárolásához. |
 | **`res/layout/spinner_device_item.xml`** | Kétsoros egyedi Spinner elrendezés az eszköznevek, szolgáltatások és csatlakozási állapotok teljes megjelenítéséhez. |
@@ -77,7 +79,7 @@ A **BT Audio Router** egy háttérben futó előtér-szolgáltatást (**Foregrou
 5. Az **1. Csatlakoztatott Eszközök Beállítása** résznél kattints a **"Csatlakoztatott Eszközök Újratöltése"** gombra, majd válaszd ki:
    - **Forrás (Android Auto)**: a fejegységedet.
    - **Cél (Bluetooth kihangosító)**: a hívásokhoz használni kívánt kihangosítót.
-6. Kapcsold be a **Hívás-átirányító háttérszolgáltatás** kapcsolót.
+6. Kapcsold be a **Hívás-átirányító háttérszolgáltatás** kapcsolót (valamint a külön Hívás / Média kapcsolókat).
 7. A csatornák teszteléséhez kattints az **"Átirányítás tesztelése"** gombra.
 8. Hibakereséshez használhatod a **"Teljes képernyő"** és **"Másolás"** gombokat a napló elküldéséhez.
 
@@ -107,11 +109,13 @@ When connected to Android Auto, the Android system automatically routes call aud
 ## ✨ Features
 
 - **Automatic Call Routing**: Hands-free routing for incoming and outgoing calls.
+- **Separate Channel Toggles**: Individual switches to enable/disable Phone Call Routing and Media Audio Routing.
+- **Strict Android Auto Exclusion**: Prevents fallback routing loops back to the Android Auto head unit if the target device is unavailable.
+- **Text-to-Speech Channel Test**: Diagnostic button uses Text-to-Speech (TTS) to speak on the call channel (`STREAM_VOICE_CALL`) and media channel (`STREAM_MUSIC`) in the phone's native language. Works even when background service is off!
 - **Detailed Diagnostic Logging & Fullscreen Selectable Log Modal**:
   - Logs comprehensive diagnostic telemetry (Android OS, audio modes, call states, list of all available communication and output devices with ID, name, and type).
   - Tapping the log box or **"Fullscreen"** opens a full-screen, selectable modal dialog.
   - Tapping **"Copy Log"** copies the entire log output to clipboard in 1 tap.
-- **3x Text-to-Speech Channel Test**: Diagnostic button uses Text-to-Speech (TTS) to speak 3 times on the call channel (`STREAM_VOICE_CALL`) and 3 times on the media channel (`STREAM_MUSIC`) in the phone's native language. Works even when background service is off!
 - **Two-Line Device Spinner View**: Custom layout (`spinner_device_item.xml`) ensuring device capabilities (`HFP`, `A2DP`, `HID`) and connection status are 100% visible on line 2.
 - **Connected-Only Device Filter**: The selection dropdowns **only list actively connected** Bluetooth devices, preventing selection of offline/unconnected paired devices.
 - **Safe Audio Routing (No Call Muting)**: Route enforcement only runs during active calls or manual test mode.

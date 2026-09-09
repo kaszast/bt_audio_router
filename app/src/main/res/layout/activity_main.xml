@@ -152,7 +152,23 @@
                 android:text="@string/service_switch_label"
                 android:textSize="14sp"
                 android:textStyle="bold"
-                android:paddingVertical="8dp" />
+                android:paddingVertical="4dp" />
+
+            <Switch
+                android:id="@+id/switchCallRouting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/service_call_switch_label"
+                android:textSize="13sp"
+                android:paddingVertical="4dp" />
+
+            <Switch
+                android:id="@+id/switchMediaRouting"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/service_media_switch_label"
+                android:textSize="13sp"
+                android:paddingVertical="4dp" />
 
             <View
                 android:layout_width="match_parent"
@@ -237,7 +253,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
                 android:text="@string/btn_copy_log"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:backgroundTint="#0284C7"
                 android:textColor="#FFFFFF"
                 android:paddingHorizontal="8dp" />
@@ -248,7 +264,7 @@
                 android:layout_height="36dp"
                 android:layout_marginStart="4dp"
                 android:text="@string/btn_expand_log"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:backgroundTint="#37474F"
                 android:textColor="#FFFFFF"
                 android:paddingHorizontal="8dp" />

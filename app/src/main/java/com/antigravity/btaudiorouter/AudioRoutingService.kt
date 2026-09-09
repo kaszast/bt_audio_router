@@ -118,7 +118,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {}
                 override fun onDone(utteranceId: String?) {
-                    if (utteranceId == "test_media_3") {
+                    if (utteranceId == "test_media_1") {
                         mainHandler.post {
                             log(getString(R.string.test_mode_tts_success))
                             isTestMode = false
@@ -175,6 +175,10 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         return START_STICKY
     }
 
+    /**
+     * SCO Teszt Text-To-Speech (TTS) felolvasással:
+     * 1-szer kimondja a híváscsatornán (STREAM_VOICE_CALL), majd 1-szer a médiacsatornán (STREAM_MUSIC).
+     */
     private fun performAudioChannelsTtsTest() {
         log(getString(R.string.test_mode_tts_start))
         isTestMode = true
@@ -186,23 +190,25 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
 
         mainHandler.postDelayed({
             if (tts != null) {
-                val callBundle = Bundle().apply {
-                    putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
-                }
-                for (i in 1..3) {
-                    tts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "test_call_$i")
+                // 1. Híváscsatorna tesztelése (1x)
+                if (prefs.isCallRoutingEnabled) {
+                    val callBundle = Bundle().apply {
+                        putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+                    }
+                    tts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "test_call_1")
                 }
 
-                val mediaBundle = Bundle().apply {
-                    putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
-                }
-                for (i in 1..3) {
-                    tts?.speak(mediaText, TextToSpeech.QUEUE_ADD, mediaBundle, "test_media_$i")
+                // 2. Médiacsatorna tesztelése (1x)
+                if (prefs.isMediaRoutingEnabled) {
+                    val mediaBundle = Bundle().apply {
+                        putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+                    }
+                    tts?.speak(mediaText, TextToSpeech.QUEUE_ADD, mediaBundle, "test_media_1")
                 }
             }
 
             mainHandler.removeCallbacks(testTimeoutRunnable)
-            mainHandler.postDelayed(testTimeoutRunnable, 15000L)
+            mainHandler.postDelayed(testTimeoutRunnable, 8000L)
             updatePersistentNotification()
         }, 500)
     }
@@ -298,44 +304,41 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
             return false
         }
 
+        if (!prefs.isCallRoutingEnabled && !isTestMode) {
+            return false
+        }
+
         logDetailedDiagnostics()
 
-        val targetMac = prefs.targetSpeakerMac
-        val targetName = prefs.targetSpeakerName
-        val sourceMac = prefs.sourceAaMac
-        val sourceName = prefs.sourceAaName
+        val targetMac = prefs.targetSpeakerMac ?: ""
+        val targetName = prefs.targetSpeakerName ?: ""
+        val sourceName = prefs.sourceAaName ?: ""
 
-        if (targetMac.isNullOrEmpty() && targetName.isNullOrEmpty()) {
-            log("ERROR: No target speaker set!")
+        if (targetMac.isEmpty() && targetName.isEmpty()) {
+            log("ERROR: No target speaker configured!")
             return false
         }
 
         val availableDevices = audioManager.availableCommunicationDevices
 
-        // 1. Kifejezetten olyan Bluetooth SCO eszközt keresünk, aminek a MAC címe VAGY a neve egyezik a céllal.
+        val cleanTargetName = targetName.replace(Regex(".*?[–-]\\s*"), "").trim()
+        val cleanSourceName = sourceName.replace(Regex(".*?[–-]\\s*"), "").trim()
+
+        // 1. Kifejezetten olyan Bluetooth SCO eszközt keresünk, aminek a MAC címe VAGY a tisztított neve egyezik a céllal.
         var targetDevice = availableDevices.firstOrNull { device ->
             device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
-            (!targetMac.isNullOrEmpty() && device.address.equals(targetMac, ignoreCase = true))
+                    ((targetMac.isNotEmpty() && device.address.equals(targetMac, ignoreCase = true)) ||
+                            (cleanTargetName.isNotEmpty() && (device.productName.toString().contains(cleanTargetName, ignoreCase = true) || cleanTargetName.contains(device.productName.toString(), ignoreCase = true))))
         }
 
-        if (targetDevice == null && !targetName.isNullOrEmpty()) {
-            targetDevice = availableDevices.firstOrNull { device ->
-                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
-                device.productName.toString().contains(targetName, ignoreCase = true)
-            }
-        }
-
-        // 2. Ha nem találtuk a célt, SZIGORÚAN KIZÁRJUK az Android Auto forrást a fallbackből.
+        // 2. HA NEM TALÁLTUK A CÉLT, SZIGORÚAN MEGTAGADJUK AZ ÁTIRÁNYÍTÁST! (SOHA NEM ADJUK ÁT AZ AA FORRÁSNAK!)
         if (targetDevice == null) {
-            targetDevice = availableDevices.firstOrNull { device ->
-                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
-                        (sourceMac.isNullOrEmpty() || !device.address.equals(sourceMac, ignoreCase = true)) &&
-                        (sourceName.isNullOrEmpty() || !device.productName.toString().contains(sourceName, ignoreCase = true))
-            }
+            log("WARNING: Target BT speaker [$targetName / $targetMac] NOT found in available SCO devices! AA source [$sourceName] strictly excluded.")
+            return false
         }
 
-        if (targetDevice == null) {
-            log("WARNING: Target BT speaker [$targetName / $targetMac] NOT found in available SCO devices!")
+        if (cleanSourceName.isNotEmpty() && targetDevice.productName.toString().contains(cleanSourceName, ignoreCase = true)) {
+            log("WARNING: Target device matched Source AA device [$sourceName]! Aborting route to prevent loop.")
             return false
         }
 

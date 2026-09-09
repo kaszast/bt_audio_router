@@ -57,6 +57,8 @@ class MainActivity : Activity() {
     private lateinit var spinnerTargetSpeaker: Spinner
     private lateinit var btnRefreshDevices: Button
     private lateinit var switchService: Switch
+    private lateinit var switchCallRouting: Switch
+    private lateinit var switchMediaRouting: Switch
     private lateinit var tvCallState: TextView
     private lateinit var tvActiveDevice: TextView
     private lateinit var btnTestRoute: Button
@@ -184,6 +186,8 @@ class MainActivity : Activity() {
         spinnerTargetSpeaker = findViewById(R.id.spinnerTargetSpeaker)
         btnRefreshDevices = findViewById(R.id.btnRefreshDevices)
         switchService = findViewById(R.id.switchService)
+        switchCallRouting = findViewById(R.id.switchCallRouting)
+        switchMediaRouting = findViewById(R.id.switchMediaRouting)
         tvCallState = findViewById(R.id.tvCallState)
         tvActiveDevice = findViewById(R.id.tvActiveDevice)
         btnTestRoute = findViewById(R.id.btnTestRoute)
@@ -194,6 +198,8 @@ class MainActivity : Activity() {
 
         tvLog.movementMethod = ScrollingMovementMethod()
         switchService.isChecked = AudioRoutingService.isRunning
+        switchCallRouting.isChecked = prefs.isCallRoutingEnabled
+        switchMediaRouting.isChecked = prefs.isMediaRoutingEnabled
     }
 
     private fun setupListeners() {
@@ -219,6 +225,16 @@ class MainActivity : Activity() {
                 }
             }
             updateStatus()
+        }
+
+        switchCallRouting.setOnCheckedChangeListener { _, isChecked ->
+            prefs.isCallRoutingEnabled = isChecked
+            appendLog("Call Routing: $isChecked")
+        }
+
+        switchMediaRouting.setOnCheckedChangeListener { _, isChecked ->
+            prefs.isMediaRoutingEnabled = isChecked
+            appendLog("Media Routing: $isChecked")
         }
 
         btnTestRoute.setOnClickListener {
@@ -350,6 +366,9 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
+    /**
+     * Közvetlen TTS felolvasási teszt a hívási és média csatornákon, ha a háttérszolgáltatás nem fut (1x felolvasás).
+     */
     private fun performDirectTtsTest() {
         appendLog(getString(R.string.test_mode_tts_start))
         val callText = getString(R.string.test_call_channel_tts)
@@ -362,24 +381,24 @@ class MainActivity : Activity() {
             if (status == TextToSpeech.SUCCESS) {
                 directTts?.language = Locale.getDefault()
 
-                val callBundle = Bundle().apply {
-                    putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
-                }
-                for (i in 1..3) {
-                    directTts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "direct_call_$i")
+                if (prefs.isCallRoutingEnabled) {
+                    val callBundle = Bundle().apply {
+                        putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
+                    }
+                    directTts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "direct_call_1")
                 }
 
-                val mediaBundle = Bundle().apply {
-                    putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
-                }
-                for (i in 1..3) {
-                    directTts?.speak(mediaText, TextToSpeech.QUEUE_ADD, mediaBundle, "direct_media_$i")
+                if (prefs.isMediaRoutingEnabled) {
+                    val mediaBundle = Bundle().apply {
+                        putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
+                    }
+                    directTts?.speak(mediaText, TextToSpeech.QUEUE_ADD, mediaBundle, "direct_media_1")
                 }
 
                 directTts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onStart(utteranceId: String?) {}
                     override fun onDone(utteranceId: String?) {
-                        if (utteranceId == "direct_media_3") {
+                        if (utteranceId == "direct_media_1" || utteranceId == "direct_call_1") {
                             mainHandler.post {
                                 appendLog(getString(R.string.test_mode_tts_success))
                             }
@@ -605,6 +624,8 @@ class MainActivity : Activity() {
 
     private fun updateStatus() {
         switchService.isChecked = AudioRoutingService.isRunning
+        switchCallRouting.isChecked = prefs.isCallRoutingEnabled
+        switchMediaRouting.isChecked = prefs.isMediaRoutingEnabled
 
         val commDev: AudioDeviceInfo? = audioManager.communicationDevice
         val devText = if (commDev != null) {
