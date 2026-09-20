@@ -14,6 +14,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
@@ -133,8 +134,8 @@ class MainActivity : Activity() {
         setContentView(R.layout.activity_main)
 
         prefs = DevicePreferenceManager(this)
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        telephonyManager = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
 
         initViews()
         setupListeners()
@@ -142,7 +143,7 @@ class MainActivity : Activity() {
     }
 
     private fun initBluetoothProxies() {
-        val btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val btManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         val adapter = btManager.adapter
         adapter?.getProfileProxy(this, profileListener, BluetoothProfile.HEADSET)
         adapter?.getProfileProxy(this, profileListener, BluetoothProfile.A2DP)
@@ -171,7 +172,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        val btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val btManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         val adapter = btManager.adapter
         headsetProxy?.let { adapter?.closeProfileProxy(BluetoothProfile.HEADSET, it) }
         a2dpProxy?.let { adapter?.closeProfileProxy(BluetoothProfile.A2DP, it) }
@@ -210,7 +211,7 @@ class MainActivity : Activity() {
         btnRefreshDevices.setOnClickListener {
             loadPairedDevices()
             updateStatus()
-            appendLog("Connected Bluetooth devices refreshed.")
+            appendLog("Paired Bluetooth devices refreshed.")
         }
 
         switchService.setOnCheckedChangeListener { _, isChecked ->
@@ -277,7 +278,7 @@ class MainActivity : Activity() {
     }
 
     private fun copyLogToClipboard() {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("BTAudioRouter Log", tvLog.text)
         clipboard.setPrimaryClip(clip)
         Toast.makeText(this, getString(R.string.log_copied_toast), Toast.LENGTH_SHORT).show()
@@ -297,7 +298,7 @@ class MainActivity : Activity() {
             text = getString(R.string.fullscreen_log_title)
             setTextColor(0xFFFFFFFF.toInt())
             textSize = 16f
-            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTypeface(null, Typeface.BOLD)
             setPadding(0, 0, 0, 16)
         }
 
@@ -313,7 +314,7 @@ class MainActivity : Activity() {
             text = tvLog.text
             setTextColor(0xFF80CBC4.toInt())
             textSize = 12f
-            typeface = android.graphics.Typeface.MONOSPACE
+            typeface = Typeface.MONOSPACE
             setTextIsSelectable(true)
             setPadding(12, 12, 12, 12)
             setBackgroundColor(0xFF1C242B.toInt())
@@ -331,7 +332,7 @@ class MainActivity : Activity() {
             setBackgroundColor(0xFF0284C7.toInt())
             setTextColor(0xFFFFFFFF.toInt())
             setOnClickListener {
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("BTAudioRouter Full Log", tvFullLog.text)
                 clipboard.setPrimaryClip(clip)
                 Toast.makeText(this@MainActivity, getString(R.string.log_copied_toast), Toast.LENGTH_SHORT).show()
@@ -369,9 +370,6 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
-    /**
-     * Közvetlen TTS felolvasási teszt a hívási és média csatornákon, ha a háttérszolgáltatás nem fut (1x felolvasás).
-     */
     private fun performDirectTtsTest() {
         appendLog(getString(R.string.test_mode_tts_start))
         val callText = getString(R.string.test_call_channel_tts)
@@ -490,6 +488,11 @@ class MainActivity : Activity() {
 
         val capText = capabilities.joinToString(" + ")
 
+        val isConnected = isCallConnected || isMediaConnected
+        if (!isConnected) {
+            return "$capText | " + getString(R.string.status_paired_disconnected)
+        }
+
         if (!isCallConnected) {
             return "$capText | " + getString(R.string.warn_no_hfp)
         }
@@ -508,7 +511,7 @@ class MainActivity : Activity() {
     private fun loadPairedDevices() {
         if (!hasBtConnectPermission()) return
 
-        val btManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val btManager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
         val adapter: BluetoothAdapter? = btManager.adapter
 
         val connectedHeadset = headsetProxy?.connectedDevices ?: emptyList()
@@ -524,18 +527,15 @@ class MainActivity : Activity() {
                 val isCallConnected = connectedHeadset.any { it.address.equals(mac, ignoreCase = true) } ||
                         commDevices.any { it.address.equals(mac, ignoreCase = true) }
                 val isMediaConnected = connectedA2dp.any { it.address.equals(mac, ignoreCase = true) }
-                val isConnected = isCallConnected || isMediaConnected
 
-                if (isConnected) {
-                    val displayName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !dev.alias.isNullOrEmpty()) {
-                        dev.alias!!
-                    } else {
-                        dev.name ?: getString(R.string.unknown_device)
-                    }
-
-                    val infoText = getDeviceCapabilitiesAndStatus(dev, isCallConnected, isMediaConnected)
-                    pairedDevices.add(BtDeviceItem(displayName, mac, infoText, isCallConnected))
+                val displayName = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !dev.alias.isNullOrEmpty()) {
+                    dev.alias!!
+                } else {
+                    dev.name ?: getString(R.string.unknown_device)
                 }
+
+                val infoText = getDeviceCapabilitiesAndStatus(dev, isCallConnected, isMediaConnected)
+                pairedDevices.add(BtDeviceItem(displayName, mac, infoText, isCallConnected))
             }
         }
 
