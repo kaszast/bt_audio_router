@@ -20,6 +20,7 @@ import android.speech.tts.UtteranceProgressListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.Log
+import android.widget.Toast
 import java.util.Locale
 
 /**
@@ -40,10 +41,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     private var isTestMode = false
     private var isWatchdogRunning = false
 
-    /** True, ha az audio módot MI állítottuk (csak tesztmódban) — csak ilyenkor állítjuk vissza. */
     private var didSetAudioMode = false
-
-    /** Ismétlődő "cél nem található" naplóüzenetek elnyomására (a watchdog 500 ms-onként fut). */
     private var hasLoggedTargetMissing = false
 
     private val watchdogRunnable = object : Runnable {
@@ -103,8 +101,8 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         super.onCreate()
         log("Initializing service...")
 
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        telephonyManager = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
         prefs = DevicePreferenceManager(this)
 
         createNotificationChannel()
@@ -181,17 +179,11 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         return START_STICKY
     }
 
-    /**
-     * SCO Teszt Text-To-Speech (TTS) felolvasással:
-     * 1-szer kimondja a híváscsatornán (STREAM_VOICE_CALL), majd 1-szer a médiacsatornán (STREAM_MUSIC).
-     */
     private fun performAudioChannelsTtsTest() {
         log(getString(R.string.test_mode_tts_start))
         isTestMode = true
         hasLoggedTargetMissing = false
 
-        // Éles hívásnál a telefónia stack adja az audio módot; teszt közben nekünk kell
-        // MODE_IN_COMMUNICATION-be tenni, hogy a kommunikációs eszköz kiválasztása érvényesüljön.
         if (prefs.isCallRoutingEnabled) {
             audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
             didSetAudioMode = true
@@ -205,7 +197,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
 
         mainHandler.postDelayed({
             if (tts != null) {
-                // 1. Híváscsatorna tesztelése (1x)
                 if (prefs.isCallRoutingEnabled) {
                     val callBundle = Bundle().apply {
                         putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_VOICE_CALL)
@@ -213,7 +204,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
                     tts?.speak(callText, TextToSpeech.QUEUE_ADD, callBundle, "test_call_1")
                 }
 
-                // 2. Médiacsatorna tesztelése (1x)
                 if (prefs.isMediaRoutingEnabled) {
                     val mediaBundle = Bundle().apply {
                         putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_MUSIC)
@@ -311,12 +301,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         log(sb.toString())
     }
 
-    /**
-     * Megkeresi a cél kommunikációs (SCO) eszközt.
-     *
-     * A forrás (Android Auto) eszközt MAC alapján zárjuk ki. Ha van mentett cél MAC,
-     * KIZÁRÓLAG az alapján illesztünk — a névalapú illesztés téves eszközre találhat.
-     */
     private fun findTargetCommunicationDevice(targetMac: String, targetName: String): AudioDeviceInfo? {
         val sourceMac = prefs.sourceAaMac ?: ""
 
@@ -332,12 +316,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         return candidates.firstOrNull { it.productName.toString().equals(targetName, ignoreCase = true) }
     }
 
-    /**
-     * A cél Bluetooth SCO eszköz kikényszerítése kommunikációs eszközként.
-     *
-     * Az audio módot éles hívásnál NEM állítjuk: azt a telefónia stack kezeli, és a
-     * MODE_IN_CALL amúgy is privilegizált mód. Tesztmódban a hívó állítja MODE_IN_COMMUNICATION-re.
-     */
     fun enforceTargetAudioRoute(): Boolean {
         if (!isCallActive && !isTestMode) {
             return false
@@ -360,7 +338,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
 
         val targetDevice = findTargetCommunicationDevice(targetMac, targetName)
 
-        // Ha nem találjuk a célt, SZIGORÚAN megtagadjuk az átirányítást (soha nem esünk vissza az AA forrásra).
         if (targetDevice == null) {
             if (!hasLoggedTargetMissing) {
                 hasLoggedTargetMissing = true
@@ -372,7 +349,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
 
         hasLoggedTargetMissing = false
 
-        // A watchdog 500 ms-onként fut: ha már a célon vagyunk, ne csináljunk és ne naplózzunk semmit.
         val currentDevice = audioManager.communicationDevice
         if (currentDevice != null && currentDevice.id == targetDevice.id) {
             return true
@@ -383,6 +359,18 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
         try {
             val success = audioManager.setCommunicationDevice(targetDevice)
             log("ROUTING -> ${targetDevice.productName} [${targetDevice.address}] (id=${targetDevice.id}), setCommunicationDevice: $success")
+
+            if (success) {
+                mainHandler.post {
+                    val devName = targetDevice.productName ?: targetDevice.address
+                    Toast.makeText(
+                        applicationContext,
+                        getString(R.string.routing_success_toast, devName),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
             notifyStatusUpdate()
             return success
         } catch (e: Exception) {
@@ -394,7 +382,6 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     private fun clearAudioRoute() {
         try {
             audioManager.clearCommunicationDevice()
-            // Az audio módhoz csak akkor nyúlunk, ha mi magunk állítottuk (tesztmód).
             if (didSetAudioMode) {
                 audioManager.mode = AudioManager.MODE_NORMAL
                 didSetAudioMode = false
@@ -433,7 +420,7 @@ class AudioRoutingService : Service(), TextToSpeech.OnInitListener {
     }
 
     fun updatePersistentNotification() {
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIFICATION_ID, createCurrentNotification())
     }
 

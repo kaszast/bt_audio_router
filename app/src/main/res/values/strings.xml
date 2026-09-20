@@ -7,10 +7,10 @@
     <string name="perm_desc">Bluetooth, Phone State, and Notification permissions are required for background call routing.</string>
     <string name="grant_permissions_label">Grant Permissions</string>
 
-    <string name="section1_title">1. Connected Device Configuration</string>
+    <string name="section1_title">1. Device Configuration</string>
     <string name="android_auto_device_label">Android Auto Device (Source):</string>
     <string name="target_speaker_label">Bluetooth Handsfree (Target):</string>
-    <string name="refresh_devices_label">Refresh Connected Devices</string>
+    <string name="refresh_devices_label">Refresh Devices</string>
 
     <string name="section2_title">2. Service Status &amp; Channels</string>
     <string name="service_switch_label">Enable Call Routing Service</string>
@@ -42,7 +42,8 @@
     <string name="status_connected_call">Connected: Call</string>
     <string name="status_connected_media">Connected: Media</string>
     <string name="status_connected_active">Connected</string>
-    <string name="no_connected_devices">[No connected Bluetooth devices]</string>
+    <string name="status_paired_disconnected">Paired device | [Disconnected]</string>
+    <string name="no_connected_devices">[No paired Bluetooth devices]</string>
 
     <string name="warn_no_hfp">⚠️ Media connected | ❌ Call (HFP) missing! Enable "Phone calls" in BT settings</string>
     <string name="log_warn_hfp_missing">WARNING: Selected target [%1$s] is connected for Media only! Open BT Settings -&gt; %1$s -&gt; Enable "Phone calls".</string>
@@ -53,6 +54,8 @@
     <string name="test_media_channel_tts">Testing media channel</string>
     <string name="test_mode_tts_start">SCO TEST: Speaking on call channel and media channel 1 time...</string>
     <string name="test_mode_tts_success">Audio channels test completed successfully.</string>
+
+    <string name="routing_success_toast">Call successfully routed to: %1$s!</string>
 
     <string name="btn_copy_log">Copy Log</string>
     <string name="btn_expand_log">Fullscreen</string>
